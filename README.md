@@ -9,51 +9,52 @@ Sistema Integral de Transporte de Carga desarrollado para el curso **Desarrollo 
 - Exposición REST: Spring MVC.
 - Persistencia: Spring Data JPA.
 - Base de datos: MySQL.
-- Seguridad: Spring Security + BCrypt.
+- Seguridad: Spring Security + BCrypt en auth-service.
 - IDE: IntelliJ IDEA.
 - Pruebas de endpoints: Postman.
 
-## Microservicios
+## Microservicios implementados
 
-El desarrollo comienza por:
+### auth-service — puerto 8081
 
-- `auth-service`: autenticación, usuarios y roles.
+Responsable de autenticación, usuarios y roles.
 
-Los demás servicios se incorporarán progresivamente conforme avance el proyecto.
+- `POST /api/auth/registro`
+- `POST /api/auth/login`
 
-## Ejecutar auth-service
+Base de datos: `sitrac_auth`.
 
-1. Tener MySQL iniciado.
-2. Configurar las variables de entorno si son necesarias:
-   - `MYSQL_URL`
-   - `MYSQL_USER`
-   - `MYSQL_PASSWORD`
-3. Desde la raíz:
+### cliente-service — puerto 8082
 
-```bash
-./mvnw -pl auth-service spring-boot:run
-```
+Primer CRUD REST completo del proyecto.
 
-En Windows:
+- `POST /api/clientes`
+- `GET /api/clientes`
+- `GET /api/clientes/{id}`
+- `PUT /api/clientes/{id}`
+- `DELETE /api/clientes/{id}`
+
+Base de datos: `sitrac_clientes`.
+
+## Ejecutar desde la raíz
+
+Auth:
 
 ```powershell
 mvnw.cmd -pl auth-service spring-boot:run
 ```
 
-El servicio se ejecuta en:
+Clientes:
 
-```text
-http://localhost:8081
+```powershell
+mvnw.cmd -pl cliente-service spring-boot:run
 ```
 
-### Registrar usuario
+Ambos pueden ejecutarse al mismo tiempo porque usan puertos diferentes.
 
-```http
-POST /api/auth/registro
-```
+## Variables de entorno
 
-### Login
-
-```http
-POST /api/auth/login
-```
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_URL` para auth-service
+- `MYSQL_CLIENTE_URL` para cliente-service

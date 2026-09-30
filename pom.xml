@@ -26,6 +26,7 @@
 
     <modules>
         <module>auth-service</module>
+        <module>cliente-service</module>
     </modules>
 
 </project>
