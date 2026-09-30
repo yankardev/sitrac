@@ -1,13 +1,12 @@
-package com.yankardev.sitrac;
+package com.yankardev.sitrac.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SitracApplication {
+public class AuthServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(SitracApplication.class, args);
+        SpringApplication.run(AuthServiceApplication.class, args);
     }
-
 }
