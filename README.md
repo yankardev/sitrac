@@ -4,7 +4,7 @@ Proyecto académico desarrollado para el curso **Desarrollo de Servicios Web II*
 
 SITRAC busca digitalizar la preparación, programación, ejecución y control de operaciones de transporte de carga pesada. La aplicación se está construyendo con una arquitectura de **microservicios REST**, usando **Spring Boot**, **Spring MVC**, **Spring Data JPA**, **MySQL** y una organización interna basada en **arquitectura hexagonal**.
 
-> Estado actual: el proyecto ya cuenta con los microservicios de autenticación, clientes y pedidos. Los demás módulos se incorporarán progresivamente.
+> Estado actual: el proyecto ya cuenta con los microservicios de autenticación, clientes, pedidos y conductores. Los demás módulos se incorporarán progresivamente.
 
 ---
 
@@ -106,6 +106,9 @@ sitrac
 │
 ├── pedido-service
 │   └── Gestión CRUD de pedidos de transporte
+│
+├── conductor-service
+│   └── Gestión CRUD de conductores, licencias y disponibilidad
 │
 ├── docs
 │   └── Diagramas de arquitectura
@@ -250,6 +253,40 @@ Al crear un pedido, el estado inicial se asigna automáticamente como `REGISTRAD
 
 ---
 
+### 4.4 conductor-service — puerto 8084
+
+Responsable de administrar los conductores habilitados para las operaciones de transporte.
+
+CRUD REST disponible:
+
+```http
+POST   /api/conductores
+GET    /api/conductores
+GET    /api/conductores/{id}
+PUT    /api/conductores/{id}
+DELETE /api/conductores/{id}
+```
+
+Base de datos:
+
+```text
+sitrac_conductores
+```
+
+Datos principales del conductor:
+
+- DNI.
+- Nombres y apellidos.
+- Número y categoría de licencia.
+- Fecha de vencimiento de licencia.
+- Teléfono.
+- Disponibilidad.
+- Estado activo/inactivo.
+
+Incluye validaciones para evitar DNI y números de licencia duplicados.
+
+---
+
 ## 5. Flujo funcional previsto de SITRAC
 
 El proyecto completo apunta a cubrir este flujo:
@@ -302,17 +339,12 @@ Estas reglas se implementarán en los módulos de flota, programación y viaje.
 La arquitectura completa contempla continuar con:
 
 ```text
-conductor-service
 flota-service
 programacion-service
 viaje-service
 mantenimiento-service
 somma-service
 ```
-
-### conductor-service
-
-Administrará conductores, licencias y disponibilidad.
 
 ### flota-service
 
@@ -366,6 +398,7 @@ MYSQL_PASSWORD
 MYSQL_URL
 MYSQL_CLIENTE_URL
 MYSQL_PEDIDO_URL
+MYSQL_CONDUCTOR_URL
 ```
 
 Ejemplo:
@@ -393,6 +426,12 @@ mvnw.cmd -pl cliente-service spring-boot:run
 mvnw.cmd -pl pedido-service spring-boot:run
 ```
 
+### Ejecutar conductor-service
+
+```powershell
+mvnw.cmd -pl conductor-service spring-boot:run
+```
+
 Los servicios pueden ejecutarse simultáneamente porque utilizan puertos diferentes.
 
 ---
@@ -404,6 +443,7 @@ Los servicios pueden ejecutarse simultáneamente porque utilizan puertos diferen
 | auth-service | 8081 | sitrac_auth |
 | cliente-service | 8082 | sitrac_clientes |
 | pedido-service | 8083 | sitrac_pedidos |
+| conductor-service | 8084 | sitrac_conductores |
 
 Las bases pueden crearse automáticamente mediante la configuración de Spring/JPA.
 
@@ -487,8 +527,8 @@ Se utilizan ramas `feature/*` para desarrollar módulos sin afectar inmediatamen
 | Arquitectura base | Implementada |
 | auth-service | Implementado y probado |
 | cliente-service | Implementado y probado |
-| pedido-service | Implementado; pruebas funcionales en curso |
-| conductor-service | Pendiente |
+| pedido-service | Implementado y probado |
+| conductor-service | Implementado |
 | flota-service | Pendiente |
 | programacion-service | Pendiente |
 | viaje-service | Pendiente |
@@ -532,7 +572,7 @@ Actualmente se incluyen diagramas de:
 
 ## 15. Próximo avance
 
-El siguiente módulo de desarrollo será **flota/conductores**, para posteriormente implementar **programación**, donde se concentrarán varias de las reglas principales del negocio de transporte.
+El siguiente módulo de desarrollo será **flota-service**, para posteriormente implementar **programación**, donde se concentrarán varias de las reglas principales del negocio de transporte.
 
 ---
 
