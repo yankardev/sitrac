@@ -20,5 +20,6 @@
         <module>auth-service</module>
         <module>cliente-service</module>
         <module>pedido-service</module>
+        <module>conductor-service</module>
     </modules>
 </project>
