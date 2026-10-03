@@ -1,95 +1,52 @@
 # SITRAC — Sistema Integral de Transporte de Carga
 
-Proyecto académico desarrollado para el curso **Desarrollo de Servicios Web II**.
+SITRAC es una aplicación orientada a digitalizar la preparación, programación, ejecución y control de operaciones de transporte de carga pesada.
 
-SITRAC busca digitalizar la preparación, programación, ejecución y control de operaciones de transporte de carga pesada. La aplicación se está construyendo con una arquitectura de **microservicios REST**, usando **Spring Boot**, **Spring MVC**, **Spring Data JPA**, **MySQL** y una organización interna basada en **arquitectura hexagonal**.
+El proyecto se desarrolla para el curso **Desarrollo de Servicios Web II** utilizando una arquitectura distribuida basada en **microservicios REST**, con **Java 21, Spring Boot, Spring MVC, Spring Data JPA, MySQL, Maven, Lombok y Postman**.
 
-> Estado actual: el proyecto ya cuenta con los microservicios de autenticación, clientes, pedidos y conductores. Los demás módulos se incorporarán progresivamente.
+Cada microservicio mantiene una organización interna inspirada en **arquitectura hexagonal**, separando dominio, casos de uso, entrada REST y persistencia.
+
+> Estado actual: están implementados los nueve microservicios base. Los primeros módulos ya fueron probados y los nuevos módulos quedan listos para la fase de ejecución, pruebas e integración entre servicios.
 
 ---
 
-## 1. ¿Qué problema resuelve?
-
-En una operación de transporte pesado intervienen clientes, pedidos, conductores, tractos, semirremolques, viajes, documentos, gastos, mantenimiento y controles de seguridad. Cuando esta información se administra de forma dispersa, es difícil tener trazabilidad y validar que una unidad pueda realizar un viaje.
-
-SITRAC centraliza ese proceso para que una operación pueda seguir un flujo como:
+## 1. Flujo general de SITRAC
 
 ```text
+Usuario
+   ↓
+Autenticación
+   ↓
 Cliente
    ↓
 Pedido de transporte
    ↓
+Conductor + Tracto + Semirremolque
+   ↓
 Programación
-   ↓
-Asignación de conductor + tracto + semirremolque
-   ↓
-Validación de disponibilidad y documentos
    ↓
 Viaje
    ↓
-Control operativo
+Mantenimiento / SOMMA
    ↓
-Cierre y trazabilidad
+Trazabilidad operativa
 ```
 
 ---
 
-## 2. Arquitectura general
+## 2. Microservicios
 
-La solución se plantea como un conjunto de microservicios independientes.
-
-```text
-                    CLIENTE / POSTMAN / FRONTEND
-                               │
-                               ▼
-                    APIs REST de SITRAC
-                               │
-        ┌──────────────────────┼──────────────────────┐
-        ▼                      ▼                      ▼
-  auth-service          cliente-service        pedido-service
-     :8081                  :8082                  :8083
-        │                      │                      │
-        ▼                      ▼                      ▼
-  sitrac_auth          sitrac_clientes         sitrac_pedidos
-        │                      │                      │
-        └──────────────────── MySQL ─────────────────┘
-```
-
-Cada microservicio organiza internamente su código con **arquitectura hexagonal**:
-
-```text
-REST / Controller
-       ↓
-Puerto de entrada
-       ↓
-Caso de uso / Application Service
-       ↓
-Dominio
-       ↓
-Puerto de salida
-       ↓
-Persistence Adapter
-       ↓
-Spring Data JPA
-       ↓
-MySQL
-```
-
-### Tecnologías
-
-- Java 21
-- Spring Boot
-- Spring MVC / REST
-- Spring Data JPA
-- Spring Security
-- BCryptPasswordEncoder
-- MySQL
-- Maven
-- Lombok
-- Jakarta Validation
-- Postman
-- IntelliJ IDEA
-- Git / GitHub
+| Microservicio | Puerto | Base de datos | Estado |
+|---|---:|---|---|
+| auth-service | 8081 | sitrac_auth | Implementado y probado |
+| cliente-service | 8082 | sitrac_clientes | Implementado y probado |
+| pedido-service | 8083 | sitrac_pedidos | Implementado y probado |
+| conductor-service | 8084 | sitrac_conductores | Implementado, pendiente de prueba |
+| flota-service | 8085 | sitrac_flota | Implementado, pendiente de prueba |
+| programacion-service | 8086 | sitrac_programaciones | Implementado, pendiente de prueba e integración |
+| viaje-service | 8087 | sitrac_viajes | Implementado, pendiente de prueba e integración |
+| mantenimiento-service | 8088 | sitrac_mantenimiento | Implementado, pendiente de prueba e integración |
+| somma-service | 8089 | sitrac_somma | Implementado, pendiente de prueba |
 
 ---
 
@@ -97,361 +54,45 @@ MySQL
 
 ```text
 sitrac
-│
 ├── auth-service
-│   └── Autenticación, usuarios y roles
-│
 ├── cliente-service
-│   └── Gestión CRUD de clientes
-│
 ├── pedido-service
-│   └── Gestión CRUD de pedidos de transporte
-│
 ├── conductor-service
-│   └── Gestión CRUD de conductores, licencias y disponibilidad
-│
+├── flota-service
+├── programacion-service
+├── viaje-service
+├── mantenimiento-service
+├── somma-service
 ├── docs
-│   └── Diagramas de arquitectura
-│
 ├── pom.xml
 └── README.md
 ```
 
-El `pom.xml` de la raíz funciona como agregador Maven de los microservicios.
+El `pom.xml` raíz funciona como agregador Maven de todos los módulos.
 
 ---
 
-## 4. Microservicios implementados
-
-### 4.1 auth-service — puerto 8081
-
-Responsable del acceso al sistema.
-
-Funciones actuales:
-
-- Registro de usuarios.
-- Inicio de sesión.
-- Roles básicos.
-- Contraseñas almacenadas con BCrypt.
-- Validación de usuario activo.
-
-Endpoints:
-
-```http
-POST /api/auth/registro
-POST /api/auth/login
-```
-
-Base de datos:
+## 4. Arquitectura interna de cada microservicio
 
 ```text
-sitrac_auth
+REST Controller
+      ↓
+Puerto de entrada
+      ↓
+Application Service
+      ↓
+Dominio
+      ↓
+Puerto de salida
+      ↓
+Persistence Adapter
+      ↓
+Spring Data JPA
+      ↓
+MySQL
 ```
 
-Ejemplo de registro:
-
-```json
-{
-  "username": "admin",
-  "password": "123456",
-  "nombreCompleto": "Administrador SITRAC",
-  "rol": "ADMIN"
-}
-```
-
-La contraseña recibida nunca se devuelve en la respuesta REST y se almacena cifrada mediante BCrypt.
-
----
-
-### 4.2 cliente-service — puerto 8082
-
-Responsable de administrar los clientes que solicitan servicios de transporte.
-
-CRUD REST disponible:
-
-```http
-POST   /api/clientes
-GET    /api/clientes
-GET    /api/clientes/{id}
-PUT    /api/clientes/{id}
-DELETE /api/clientes/{id}
-```
-
-Base de datos:
-
-```text
-sitrac_clientes
-```
-
-Datos principales del cliente:
-
-- Tipo de documento.
-- Número de documento.
-- Nombre o razón social.
-- Teléfono.
-- Correo.
-- Dirección.
-- Estado activo/inactivo.
-
-Incluye validaciones y control de documentos duplicados.
-
----
-
-### 4.3 pedido-service — puerto 8083
-
-Responsable de registrar las solicitudes de transporte realizadas por los clientes.
-
-CRUD REST disponible:
-
-```http
-POST   /api/pedidos
-GET    /api/pedidos
-GET    /api/pedidos/{id}
-PUT    /api/pedidos/{id}
-DELETE /api/pedidos/{id}
-```
-
-Base de datos:
-
-```text
-sitrac_pedidos
-```
-
-Datos principales del pedido:
-
-- Cliente asociado mediante `clienteId`.
-- Tipo de carga.
-- Descripción.
-- Toneladas.
-- Origen.
-- Destino.
-- Fecha de solicitud.
-- Estado.
-
-Estados contemplados:
-
-```text
-REGISTRADO
-PROGRAMADO
-EN_VIAJE
-FINALIZADO
-CANCELADO
-```
-
-Tipos de carga contemplados:
-
-```text
-CAL_GRANEL
-CEMENTO_BOLSA
-MAQUINARIA
-CARGA_ANCHA
-ESPECIAL
-OTRO
-```
-
-Al crear un pedido, el estado inicial se asigna automáticamente como `REGISTRADO`.
-
----
-
-### 4.4 conductor-service — puerto 8084
-
-Responsable de administrar los conductores habilitados para las operaciones de transporte.
-
-CRUD REST disponible:
-
-```http
-POST   /api/conductores
-GET    /api/conductores
-GET    /api/conductores/{id}
-PUT    /api/conductores/{id}
-DELETE /api/conductores/{id}
-```
-
-Base de datos:
-
-```text
-sitrac_conductores
-```
-
-Datos principales del conductor:
-
-- DNI.
-- Nombres y apellidos.
-- Número y categoría de licencia.
-- Fecha de vencimiento de licencia.
-- Teléfono.
-- Disponibilidad.
-- Estado activo/inactivo.
-
-Incluye validaciones para evitar DNI y números de licencia duplicados.
-
----
-
-## 5. Flujo funcional previsto de SITRAC
-
-El proyecto completo apunta a cubrir este flujo:
-
-```text
-1. Usuario inicia sesión
-2. Se registra o selecciona un cliente
-3. Se registra un pedido
-4. Se identifica el tipo de carga
-5. Se programa el servicio
-6. Se asigna conductor
-7. Se asigna tracto
-8. Se asigna semirremolque compatible
-9. Se validan disponibilidad y documentos
-10. Se inicia el viaje
-11. Se registran controles operativos
-12. Se finaliza el viaje
-13. La información queda disponible para trazabilidad y reportes
-```
-
----
-
-## 6. Reglas de negocio previstas
-
-Entre las reglas que deberá controlar el sistema se encuentran:
-
-- Un conductor no debe tener viajes simultáneos.
-- Un vehículo no debe estar asignado a dos viajes activos al mismo tiempo.
-- Un tracto en mantenimiento no debe poder programarse.
-- Los documentos obligatorios deben estar vigentes.
-- La capacidad disponible debe ser suficiente para la carga.
-- El semirremolque debe ser compatible con el tipo de carga.
-- Un viaje debe estar previamente programado antes de iniciarse.
-
-Compatibilidad de carga prevista:
-
-| Tipo de carga | Semirremolque esperado |
-|---|---|
-| Cal a granel | Bombona |
-| Cemento en bolsa | Plataforma |
-| Maquinaria | Cama baja |
-| Carga ancha o especial | Cama baja |
-
-Estas reglas se implementarán en los módulos de flota, programación y viaje.
-
----
-
-## 7. Microservicios planificados
-
-La arquitectura completa contempla continuar con:
-
-```text
-flota-service
-programacion-service
-viaje-service
-mantenimiento-service
-somma-service
-```
-
-### flota-service
-
-Administrará tractos, semirremolques, capacidades, tipos y estados.
-
-### programacion-service
-
-Relacionará pedido, conductor, tracto y semirremolque y aplicará las principales reglas de asignación.
-
-### viaje-service
-
-Controlará el ciclo de vida del servicio:
-
-```text
-PROGRAMADO → EN_VIAJE → FINALIZADO
-```
-
-### mantenimiento-service
-
-Controlará mantenimientos y disponibilidad mecánica de las unidades.
-
-### somma-service
-
-Módulo de seguridad operacional para registrar, entre otros:
-
-- Charlas a conductores.
-- Capacitaciones.
-- Accidentes.
-- Incidentes.
-- Inspecciones.
-
----
-
-## 8. Cómo ejecutar el proyecto
-
-### Requisitos
-
-- JDK 21 o superior compatible con el proyecto.
-- MySQL.
-- IntelliJ IDEA o IDE equivalente.
-- Maven Wrapper incluido en el repositorio.
-- Postman para pruebas REST.
-
-### Variables de entorno
-
-Para no guardar credenciales en Git se utilizan:
-
-```text
-MYSQL_USER
-MYSQL_PASSWORD
-MYSQL_URL
-MYSQL_CLIENTE_URL
-MYSQL_PEDIDO_URL
-MYSQL_CONDUCTOR_URL
-```
-
-Ejemplo:
-
-```text
-MYSQL_USER=root
-MYSQL_PASSWORD=tu_password
-```
-
-### Ejecutar auth-service
-
-```powershell
-mvnw.cmd -pl auth-service spring-boot:run
-```
-
-### Ejecutar cliente-service
-
-```powershell
-mvnw.cmd -pl cliente-service spring-boot:run
-```
-
-### Ejecutar pedido-service
-
-```powershell
-mvnw.cmd -pl pedido-service spring-boot:run
-```
-
-### Ejecutar conductor-service
-
-```powershell
-mvnw.cmd -pl conductor-service spring-boot:run
-```
-
-Los servicios pueden ejecutarse simultáneamente porque utilizan puertos diferentes.
-
----
-
-## 9. Bases de datos actuales
-
-| Microservicio | Puerto | Base de datos |
-|---|---:|---|
-| auth-service | 8081 | sitrac_auth |
-| cliente-service | 8082 | sitrac_clientes |
-| pedido-service | 8083 | sitrac_pedidos |
-| conductor-service | 8084 | sitrac_conductores |
-
-Las bases pueden crearse automáticamente mediante la configuración de Spring/JPA.
-
----
-
-## 10. Convención interna de arquitectura
-
-Ejemplo de organización de un microservicio:
+Estructura típica:
 
 ```text
 domain
@@ -473,109 +114,366 @@ infrastructure
         └── persistence
 ```
 
-### domain
-
-Contiene el modelo y los contratos centrales del negocio.
-
-### port/in
-
-Define los casos de uso que la aplicación expone.
-
-### application/service
-
-Implementa los casos de uso y las reglas de negocio.
-
-### port/out
-
-Define qué necesita el dominio de sistemas externos, como persistencia.
-
-### infrastructure/adapter/in
-
-Expone los endpoints REST mediante Spring MVC.
-
-### infrastructure/adapter/out
-
-Implementa el acceso a MySQL mediante Spring Data JPA.
-
 ---
 
-## 11. Trabajo con Git
+## 5. auth-service — :8081
 
-Antes de programar:
+Responsable de autenticación y usuarios.
 
-```powershell
-git pull
+Funciones principales:
+
+- Registro de usuarios.
+- Inicio de sesión.
+- Roles básicos.
+- Contraseñas cifradas con BCrypt.
+- Validación de usuario activo.
+
+Endpoints principales:
+
+```http
+POST /api/auth/registro
+POST /api/auth/login
 ```
 
-Después de un avance:
+---
 
-```powershell
-git status
-git add .
-git commit -m "Describe el cambio realizado"
-git push
+## 6. cliente-service — :8082
+
+Gestiona los clientes que solicitan servicios de transporte.
+
+```http
+POST   /api/clientes
+GET    /api/clientes
+GET    /api/clientes/{id}
+PUT    /api/clientes/{id}
+DELETE /api/clientes/{id}
 ```
 
-Se utilizan ramas `feature/*` para desarrollar módulos sin afectar inmediatamente la versión principal.
+Incluye datos de documento, razón social, teléfono, correo, dirección y estado.
 
 ---
 
-## 12. Estado del desarrollo
+## 7. pedido-service — :8083
 
-| Módulo | Estado |
-|---|---|
-| Arquitectura base | Implementada |
-| auth-service | Implementado y probado |
-| cliente-service | Implementado y probado |
-| pedido-service | Implementado y probado |
-| conductor-service | Implementado |
-| flota-service | Pendiente |
-| programacion-service | Pendiente |
-| viaje-service | Pendiente |
-| mantenimiento-service | Pendiente |
-| somma-service | Pendiente |
+Registra las solicitudes de transporte.
 
----
+```http
+POST   /api/pedidos
+GET    /api/pedidos
+GET    /api/pedidos/{id}
+PUT    /api/pedidos/{id}
+DELETE /api/pedidos/{id}
+```
 
-## 13. Objetivo académico
-
-El proyecto permite aplicar de manera integrada los contenidos del curso:
-
-- Servicios web REST.
-- Métodos HTTP GET, POST, PUT y DELETE.
-- Arquitectura por capas y separación de responsabilidades.
-- Spring Boot.
-- Persistencia con Spring Data JPA.
-- Seguridad y cifrado de contraseñas.
-- MySQL.
-- Pruebas de APIs mediante Postman.
-- Diseño de una solución distribuida orientada a servicios.
-
----
-
-## 14. Documentación
-
-Los diagramas del proyecto se encuentran en:
+Tipos de carga contemplados:
 
 ```text
-docs/
-docs/arquitectura/
+CAL_GRANEL
+CEMENTO_BOLSA
+MAQUINARIA
+CARGA_ANCHA
+ESPECIAL
+OTRO
 ```
 
-Actualmente se incluyen diagramas de:
+Estados:
 
-- Arquitectura de microservicios.
-- Arquitectura hexagonal.
-- Organización MVC / capas.
-
----
-
-## 15. Próximo avance
-
-El siguiente módulo de desarrollo será **flota-service**, para posteriormente implementar **programación**, donde se concentrarán varias de las reglas principales del negocio de transporte.
+```text
+REGISTRADO
+PROGRAMADO
+EN_VIAJE
+FINALIZADO
+CANCELADO
+```
 
 ---
 
-**SITRAC**  
-Proyecto — Desarrollo de Servicios Web II  
+## 8. conductor-service — :8084
+
+Administra conductores, licencias y disponibilidad.
+
+```http
+POST   /api/conductores
+GET    /api/conductores
+GET    /api/conductores/{id}
+PUT    /api/conductores/{id}
+DELETE /api/conductores/{id}
+```
+
+Campos principales:
+
+- DNI.
+- Nombres.
+- Apellidos.
+- Número de licencia.
+- Categoría.
+- Fecha de vencimiento.
+- Teléfono.
+- Disponible.
+- Activo.
+
+Incluye control de DNI y licencia duplicados.
+
+---
+
+## 9. flota-service — :8085
+
+Administra **tractos** y **semirremolques**.
+
+### Tractos
+
+```http
+POST   /api/tractos
+GET    /api/tractos
+GET    /api/tractos/{id}
+PUT    /api/tractos/{id}
+DELETE /api/tractos/{id}
+```
+
+### Semirremolques
+
+```http
+POST   /api/semirremolques
+GET    /api/semirremolques
+GET    /api/semirremolques/{id}
+PUT    /api/semirremolques/{id}
+DELETE /api/semirremolques/{id}
+```
+
+Tipos de semirremolque:
+
+```text
+BOMBONA
+PLATAFORMA
+CAMA_BAJA
+OTRO
+```
+
+Estados de unidad:
+
+```text
+DISPONIBLE
+ASIGNADO
+MANTENIMIENTO
+INACTIVO
+```
+
+Compatibilidad prevista:
+
+| Tipo de carga | Semirremolque |
+|---|---|
+| CAL_GRANEL | BOMBONA |
+| CEMENTO_BOLSA | PLATAFORMA |
+| MAQUINARIA | CAMA_BAJA |
+| CARGA_ANCHA / ESPECIAL | CAMA_BAJA |
+
+---
+
+## 10. programacion-service — :8086
+
+Relaciona el pedido con los recursos necesarios para ejecutar el servicio.
+
+Una programación contiene:
+
+```text
+pedidoId
+conductorId
+tractoId
+semirremolqueId
+fechaProgramada
+estado
+```
+
+Endpoints:
+
+```http
+POST   /api/programaciones
+GET    /api/programaciones
+GET    /api/programaciones/{id}
+PUT    /api/programaciones/{id}
+DELETE /api/programaciones/{id}
+```
+
+Estado inicial:
+
+```text
+PROGRAMADA
+```
+
+Actualmente almacena las referencias por ID. La validación distribuida contra pedido-service, conductor-service y flota-service se realizará en la fase de integración.
+
+---
+
+## 11. viaje-service — :8087
+
+Administra el ciclo de vida del viaje asociado a una programación.
+
+```http
+POST   /api/viajes
+GET    /api/viajes
+GET    /api/viajes/{id}
+PUT    /api/viajes/{id}
+DELETE /api/viajes/{id}
+```
+
+Estados:
+
+```text
+PROGRAMADO
+EN_VIAJE
+FINALIZADO
+CANCELADO
+```
+
+Incluye kilometraje inicial/final, fechas y observaciones.
+
+---
+
+## 12. mantenimiento-service — :8088
+
+Registra mantenimientos de tractos y semirremolques.
+
+```http
+POST   /api/mantenimientos
+GET    /api/mantenimientos
+GET    /api/mantenimientos/{id}
+PUT    /api/mantenimientos/{id}
+DELETE /api/mantenimientos/{id}
+```
+
+Tipos:
+
+```text
+PREVENTIVO
+CORRECTIVO
+```
+
+Estados:
+
+```text
+PROGRAMADO
+EN_PROCESO
+FINALIZADO
+CANCELADO
+```
+
+---
+
+## 13. somma-service — :8089
+
+Gestiona registros de seguridad operacional.
+
+```http
+POST   /api/somma
+GET    /api/somma
+GET    /api/somma/{id}
+PUT    /api/somma/{id}
+DELETE /api/somma/{id}
+```
+
+Tipos de registro:
+
+```text
+CHARLA
+CAPACITACION
+ACCIDENTE
+INCIDENTE
+INSPECCION
+```
+
+---
+
+## 14. Bases de datos
+
+Cada microservicio utiliza su propia base lógica dentro del mismo servidor MySQL.
+
+```text
+sitrac_auth
+sitrac_clientes
+sitrac_pedidos
+sitrac_conductores
+sitrac_flota
+sitrac_programaciones
+sitrac_viajes
+sitrac_mantenimiento
+sitrac_somma
+```
+
+Con `createDatabaseIfNotExist=true`, MySQL puede crear la base correspondiente al iniciar el servicio si el usuario configurado tiene permisos suficientes.
+
+---
+
+## 15. Variables de entorno
+
+```text
+MYSQL_USER
+MYSQL_PASSWORD
+
+MYSQL_URL
+MYSQL_CLIENTE_URL
+MYSQL_PEDIDO_URL
+MYSQL_CONDUCTOR_URL
+MYSQL_FLOTA_URL
+MYSQL_PROGRAMACION_URL
+MYSQL_VIAJE_URL
+MYSQL_MANTENIMIENTO_URL
+MYSQL_SOMMA_URL
+```
+
+Las credenciales reales no deben almacenarse en Git.
+
+---
+
+## 16. Ejecución con Maven
+
+Desde la raíz del repositorio:
+
+```powershell
+mvnw.cmd -pl auth-service spring-boot:run
+mvnw.cmd -pl cliente-service spring-boot:run
+mvnw.cmd -pl pedido-service spring-boot:run
+mvnw.cmd -pl conductor-service spring-boot:run
+mvnw.cmd -pl flota-service spring-boot:run
+mvnw.cmd -pl programacion-service spring-boot:run
+mvnw.cmd -pl viaje-service spring-boot:run
+mvnw.cmd -pl mantenimiento-service spring-boot:run
+mvnw.cmd -pl somma-service spring-boot:run
+```
+
+También pueden ejecutarse desde las clases `*ServiceApplication` de IntelliJ IDEA.
+
+---
+
+## 17. Reglas de negocio que se integrarán
+
+La fase siguiente conectará los microservicios para aplicar reglas como:
+
+- Un conductor no debe tener dos viajes activos simultáneamente.
+- Una unidad no debe participar en dos viajes activos.
+- Un tracto en mantenimiento no debe ser programado.
+- La licencia del conductor debe estar vigente.
+- El semirremolque debe ser compatible con el tipo de carga.
+- La capacidad debe ser suficiente para el tonelaje solicitado.
+- Un viaje debe provenir de una programación válida.
+- Al iniciar/finalizar un viaje deberán actualizarse los estados operativos relacionados.
+
+Estas reglas requieren comunicación entre microservicios; no se consideran todavía verificadas solo por tener los CRUD separados.
+
+---
+
+## 18. Próxima fase
+
+1. Ejecutar cada microservicio.
+2. Confirmar creación automática de sus bases/tablas.
+3. Probar POST, GET, PUT y DELETE en Postman.
+4. Corregir errores encontrados.
+5. Integrar programacion-service con pedidos, conductores y flota.
+6. Integrar viaje-service con programación.
+7. Integrar mantenimiento-service con el estado de las unidades.
+8. Completar documentación, evidencias y despliegue.
+
+---
+
+**SITRAC — Sistema Integral de Transporte de Carga**  
+Desarrollo de Servicios Web II  
 YANKARDEV
