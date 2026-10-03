@@ -32,5 +32,6 @@
         <module>viaje-service</module>
         <module>mantenimiento-service</module>
         <module>somma-service</module>
+        <module>combustible-service</module>
     </modules>
 </project>
