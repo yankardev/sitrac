@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.somma.domain.model;public enum TipoRegistroSomma{CHARLA,CAPACITACION,ACCIDENTE,INCIDENTE,INSPECCION}

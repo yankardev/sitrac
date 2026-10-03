@@ -1,0 +1,2 @@
+package com.yankardev.sitrac.mantenimiento.domain.port.in;import com.yankardev.sitrac.mantenimiento.domain.model.Mantenimiento;import java.util.List;
+public interface MantenimientoUseCase{Mantenimiento crear(Mantenimiento m);List<Mantenimiento> listar();Mantenimiento obtenerPorId(Long id);Mantenimiento actualizar(Long id,Mantenimiento m);void eliminar(Long id);}

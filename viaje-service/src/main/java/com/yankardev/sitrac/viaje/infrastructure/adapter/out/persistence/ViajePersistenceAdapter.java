@@ -1,0 +1,8 @@
+package com.yankardev.sitrac.viaje.infrastructure.adapter.out.persistence;
+import com.yankardev.sitrac.viaje.domain.model.Viaje;import com.yankardev.sitrac.viaje.domain.port.out.ViajeRepositoryPort;import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Component;import java.util.*;
+@Component @RequiredArgsConstructor
+public class ViajePersistenceAdapter implements ViajeRepositoryPort{
+ private final ViajeJpaRepository repo;public Viaje guardar(Viaje v){return d(repo.save(e(v)));}public List<Viaje> listar(){return repo.findAll().stream().map(this::d).toList();}public Optional<Viaje> buscarPorId(Long id){return repo.findById(id).map(this::d);}public boolean existePorProgramacionId(Long id){return repo.existsByProgramacionId(id);}public void eliminarPorId(Long id){repo.deleteById(id);}
+ private ViajeJpaEntity e(Viaje v){return ViajeJpaEntity.builder().id(v.getId()).programacionId(v.getProgramacionId()).fechaInicio(v.getFechaInicio()).fechaFin(v.getFechaFin()).kilometrajeInicial(v.getKilometrajeInicial()).kilometrajeFinal(v.getKilometrajeFinal()).observacion(v.getObservacion()).estado(v.getEstado()).build();}
+ private Viaje d(ViajeJpaEntity e){return Viaje.builder().id(e.getId()).programacionId(e.getProgramacionId()).fechaInicio(e.getFechaInicio()).fechaFin(e.getFechaFin()).kilometrajeInicial(e.getKilometrajeInicial()).kilometrajeFinal(e.getKilometrajeFinal()).observacion(e.getObservacion()).estado(e.getEstado()).build();}
+}

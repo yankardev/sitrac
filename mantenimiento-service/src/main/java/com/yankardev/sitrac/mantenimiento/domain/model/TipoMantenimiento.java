@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.mantenimiento.domain.model;public enum TipoMantenimiento{PREVENTIVO,CORRECTIVO}

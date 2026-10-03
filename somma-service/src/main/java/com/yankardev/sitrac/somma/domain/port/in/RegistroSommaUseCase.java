@@ -1,0 +1,2 @@
+package com.yankardev.sitrac.somma.domain.port.in;import com.yankardev.sitrac.somma.domain.model.RegistroSomma;import java.util.List;
+public interface RegistroSommaUseCase{RegistroSomma crear(RegistroSomma r);List<RegistroSomma> listar();RegistroSomma obtenerPorId(Long id);RegistroSomma actualizar(Long id,RegistroSomma r);void eliminar(Long id);}

@@ -1,0 +1,3 @@
+package com.yankardev.sitrac.mantenimiento.infrastructure.adapter.in.rest.dto;
+import com.yankardev.sitrac.mantenimiento.domain.model.*;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.time.LocalDate;
+public record MantenimientoRequest(@NotNull TipoUnidad tipoUnidad,@NotNull Long unidadId,@NotNull TipoMantenimiento tipoMantenimiento,@NotNull LocalDate fechaInicio,LocalDate fechaFin,@NotBlank @Size(max=500) String descripcion,@DecimalMin("0.0") BigDecimal costo,EstadoMantenimiento estado){}

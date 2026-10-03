@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.mantenimiento.infrastructure.adapter.out.persistence;import org.springframework.data.jpa.repository.JpaRepository;public interface MantenimientoJpaRepository extends JpaRepository<MantenimientoJpaEntity,Long>{}

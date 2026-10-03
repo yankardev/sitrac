@@ -1,0 +1,5 @@
+package com.yankardev.sitrac.viaje.infrastructure.adapter.out.persistence;
+import com.yankardev.sitrac.viaje.domain.model.EstadoViaje;import jakarta.persistence.*;import lombok.*;import java.math.BigDecimal;import java.time.LocalDateTime;
+@Entity @Table(name="viajes",uniqueConstraints=@UniqueConstraint(name="uk_viajes_programacion",columnNames="programacion_id"))
+@Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
+public class ViajeJpaEntity{@Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;@Column(name="programacion_id",nullable=false) private Long programacionId;@Column(name="fecha_inicio") private LocalDateTime fechaInicio;@Column(name="fecha_fin") private LocalDateTime fechaFin;@Column(name="kilometraje_inicial",precision=12,scale=2) private BigDecimal kilometrajeInicial;@Column(name="kilometraje_final",precision=12,scale=2) private BigDecimal kilometrajeFinal;@Column(length=500) private String observacion;@Enumerated(EnumType.STRING) @Column(nullable=false,length=20) private EstadoViaje estado;}

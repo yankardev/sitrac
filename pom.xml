@@ -23,5 +23,8 @@
         <module>conductor-service</module>
         <module>programacion-service</module>
         <module>flota-service</module>
+            <module>viaje-service</module>
+            <module>mantenimiento-service</module>
+            <module>somma-service</module>
     </modules>
 </project>

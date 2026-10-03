@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.viaje.domain.model; public enum EstadoViaje{PROGRAMADO,EN_VIAJE,FINALIZADO,CANCELADO}

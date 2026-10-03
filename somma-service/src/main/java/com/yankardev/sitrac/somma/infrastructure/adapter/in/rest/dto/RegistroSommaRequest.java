@@ -1,0 +1,3 @@
+package com.yankardev.sitrac.somma.infrastructure.adapter.in.rest.dto;
+import com.yankardev.sitrac.somma.domain.model.*;import jakarta.validation.constraints.*;import java.time.LocalDateTime;
+public record RegistroSommaRequest(@NotNull TipoRegistroSomma tipo,Long conductorId,@NotNull LocalDateTime fecha,@NotBlank @Size(max=150) String titulo,@NotBlank @Size(max=1000) String descripcion,@Size(max=150) String lugar,EstadoRegistroSomma estado){}

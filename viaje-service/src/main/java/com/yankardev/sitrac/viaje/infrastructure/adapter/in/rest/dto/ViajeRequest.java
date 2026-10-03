@@ -1,0 +1,3 @@
+package com.yankardev.sitrac.viaje.infrastructure.adapter.in.rest.dto;
+import com.yankardev.sitrac.viaje.domain.model.EstadoViaje;import jakarta.validation.constraints.*;import java.math.BigDecimal;import java.time.LocalDateTime;
+public record ViajeRequest(@NotNull Long programacionId,LocalDateTime fechaInicio,LocalDateTime fechaFin,@DecimalMin("0.0") BigDecimal kilometrajeInicial,@DecimalMin("0.0") BigDecimal kilometrajeFinal,@Size(max=500) String observacion,EstadoViaje estado){}
