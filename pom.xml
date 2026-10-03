@@ -21,5 +21,7 @@
         <module>cliente-service</module>
         <module>pedido-service</module>
         <module>conductor-service</module>
+        <module>programacion-service</module>
+        <module>flota-service</module>
     </modules>
 </project>

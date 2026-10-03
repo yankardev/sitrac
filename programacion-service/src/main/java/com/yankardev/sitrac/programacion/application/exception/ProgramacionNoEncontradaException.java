@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.programacion.application.exception; public class ProgramacionNoEncontradaException extends RuntimeException{public ProgramacionNoEncontradaException(Long id){super("Programación no encontrada con id: "+id);}}
