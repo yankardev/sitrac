@@ -6,7 +6,7 @@ El proyecto se desarrolla para el curso **Desarrollo de Servicios Web II** utili
 
 Cada microservicio mantiene una organización interna inspirada en **arquitectura hexagonal**, separando dominio, casos de uso, entrada REST y persistencia.
 
-> Estado actual: están implementados diez microservicios base. Ya están integrados programacion-service con pedido/conductor/flota y viaje-service con programacion-service.
+> Estado actual: están implementados diez microservicios base. Ya están integrados programacion-service con pedido/conductor/flota, viaje-service con programacion-service y SOMMA con la programación operativa.
 
 ## Microservicios
 
@@ -47,56 +47,29 @@ Cierre y trazabilidad
 
 ## Integración de programacion-service
 
-Antes de crear una programación, el servicio consulta por REST a:
+Antes de crear una programación, el servicio consulta por REST a pedido-service, conductor-service y flota-service.
 
-- pedido-service (:8083)
-- conductor-service (:8084)
-- flota-service (:8085)
-
-Se validan:
-
-- existencia y estado del pedido;
-- conductor activo, disponible y con licencia vigente;
-- tracto activo y disponible;
-- semirremolque activo y disponible;
-- capacidad del tracto y semirremolque frente al tonelaje solicitado;
-- compatibilidad de tipo de carga con semirremolque;
-- que pedido, conductor, tracto y semirremolque no tengan otra programación activa.
-
-Compatibilidad:
-
-| Tipo de carga | Semirremolque requerido |
-|---|---|
-| CAL_GRANEL | BOMBONA |
-| CEMENTO_BOLSA | PLATAFORMA |
-| MAQUINARIA | CAMA_BAJA |
-| CARGA_ANCHA | CAMA_BAJA |
-| ESPECIAL | CAMA_BAJA |
-
-URLs configurables:
-
-```text
-PEDIDO_SERVICE_URL=http://localhost:8083
-CONDUCTOR_SERVICE_URL=http://localhost:8084
-FLOTA_SERVICE_URL=http://localhost:8085
-```
+Valida existencia y estado del pedido, conductor activo/disponible con licencia vigente, disponibilidad y capacidad de tracto y semirremolque, compatibilidad de carga y ausencia de otra programación activa para los recursos asignados.
 
 ## Integración de viaje-service
 
 Antes de crear un viaje, viaje-service consulta por REST a programacion-service (:8086).
 
+Valida que la programación exista, esté en estado PROGRAMADA y no tenga otro viaje asociado.
+
+## Integración de somma-service
+
+Para registros de tipo CHARLA, somma-service consulta por REST a programacion-service (:8086).
+
 Valida:
 
-- que la programación exista;
-- que la programación esté en estado PROGRAMADA;
-- que no exista otro viaje asociado a la misma programación;
-- coherencia de kilometraje inicial y final.
+- que la charla tenga una programación asociada;
+- que exista la programación;
+- que esté en estado PROGRAMADA;
+- que se indique un conductor;
+- que el conductor corresponda al asignado en la programación.
 
-URL configurable:
-
-```text
-PROGRAMACION_SERVICE_URL=http://localhost:8086
-```
+La columna `programacion_id` se incorpora a `registros_somma` para mantener trazabilidad entre seguridad y operación.
 
 ## combustible-service — :8090
 
@@ -108,14 +81,7 @@ PUT    /api/combustible/abastecimientos/{id}
 DELETE /api/combustible/abastecimientos/{id}
 ```
 
-Tipos:
-
-```text
-INTERNO
-TERCERO
-```
-
-La siguiente fase conectará SOMMA, mantenimiento y combustible con la programación validada.
+La siguiente fase conectará mantenimiento y combustible con la programación validada.
 
 **SITRAC — Sistema Integral de Transporte de Carga**  
 Desarrollo de Servicios Web II  

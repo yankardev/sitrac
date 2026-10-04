@@ -1,4 +1,48 @@
 package com.yankardev.sitrac.somma.infrastructure.adapter.out.persistence;
-import com.yankardev.sitrac.somma.domain.model.*;import jakarta.persistence.*;import lombok.*;import java.time.LocalDateTime;
-@Entity @Table(name="registros_somma") @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
-public class RegistroSommaJpaEntity{@Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;@Enumerated(EnumType.STRING) @Column(nullable=false,length=30) private TipoRegistroSomma tipo;@Column(name="conductor_id") private Long conductorId;@Column(nullable=false) private LocalDateTime fecha;@Column(nullable=false,length=150) private String titulo;@Column(nullable=false,length=1000) private String descripcion;@Column(length=150) private String lugar;@Enumerated(EnumType.STRING) @Column(nullable=false,length=20) private EstadoRegistroSomma estado;}
+
+import com.yankardev.sitrac.somma.domain.model.EstadoRegistroSomma;
+import com.yankardev.sitrac.somma.domain.model.TipoRegistroSomma;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "registros_somma")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class RegistroSommaJpaEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private TipoRegistroSomma tipo;
+
+    @Column(name = "programacion_id")
+    private Long programacionId;
+
+    @Column(name = "conductor_id")
+    private Long conductorId;
+
+    @Column(nullable = false)
+    private LocalDateTime fecha;
+
+    @Column(nullable = false, length = 150)
+    private String titulo;
+
+    @Column(nullable = false, length = 1000)
+    private String descripcion;
+
+    @Column(length = 150)
+    private String lugar;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EstadoRegistroSomma estado;
+}
