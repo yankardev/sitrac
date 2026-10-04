@@ -90,6 +90,26 @@ public class ConductorService implements ConductorUseCase {
     }
 
     @Override
+    public Conductor cambiarDisponibilidad(Long id, boolean disponible) {
+        Conductor actual = obtenerPorId(id);
+
+        Conductor actualizado = Conductor.builder()
+                .id(actual.getId())
+                .dni(actual.getDni())
+                .nombres(actual.getNombres())
+                .apellidos(actual.getApellidos())
+                .numeroLicencia(actual.getNumeroLicencia())
+                .categoriaLicencia(actual.getCategoriaLicencia())
+                .fechaVencimientoLicencia(actual.getFechaVencimientoLicencia())
+                .telefono(actual.getTelefono())
+                .disponible(disponible)
+                .activo(actual.isActivo())
+                .build();
+
+        return conductorRepositoryPort.guardar(actualizado);
+    }
+
+    @Override
     public void eliminar(Long id) {
         obtenerPorId(id);
         conductorRepositoryPort.eliminarPorId(id);
