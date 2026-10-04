@@ -72,11 +72,26 @@ public class ConductorController {
         return ResponseEntity.ok(toResponse(actualizado));
     }
 
+    @PutMapping("/{id}/disponibilidad")
+    public ResponseEntity<ConductorResponse> cambiarDisponibilidad(
+            @PathVariable Long id,
+            @RequestBody DisponibilidadRequest request) {
+
+        Conductor actualizado = conductorUseCase.cambiarDisponibilidad(
+                id,
+                Boolean.TRUE.equals(request.disponible())
+        );
+
+        return ResponseEntity.ok(toResponse(actualizado));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         conductorUseCase.eliminar(id);
         return ResponseEntity.noContent().build();
     }
+
+    private record DisponibilidadRequest(Boolean disponible) {}
 
     private ConductorResponse toResponse(Conductor conductor) {
         return new ConductorResponse(
