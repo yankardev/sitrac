@@ -6,6 +6,7 @@ import com.yankardev.sitrac.combustible.domain.model.AbastecimientoCombustible;
 import com.yankardev.sitrac.combustible.domain.model.TipoAbastecimiento;
 import com.yankardev.sitrac.combustible.domain.port.in.AbastecimientoCombustibleUseCase;
 import com.yankardev.sitrac.combustible.domain.port.out.AbastecimientoCombustibleRepositoryPort;
+import com.yankardev.sitrac.combustible.domain.port.out.ProgramacionConsultaPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,11 +17,14 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AbastecimientoCombustibleService implements AbastecimientoCombustibleUseCase {
+
     private final AbastecimientoCombustibleRepositoryPort repository;
+    private final ProgramacionConsultaPort programacionConsulta;
 
     @Override
     public AbastecimientoCombustible crear(AbastecimientoCombustible abastecimiento) {
         validar(abastecimiento);
+        validarProgramacion(abastecimiento);
         return repository.guardar(normalizar(abastecimiento, null));
     }
 
@@ -39,6 +43,7 @@ public class AbastecimientoCombustibleService implements AbastecimientoCombustib
     public AbastecimientoCombustible actualizar(Long id, AbastecimientoCombustible abastecimiento) {
         obtenerPorId(id);
         validar(abastecimiento);
+        validarProgramacion(abastecimiento);
         return repository.guardar(normalizar(abastecimiento, id));
     }
 
@@ -53,6 +58,7 @@ public class AbastecimientoCombustibleService implements AbastecimientoCombustib
                 && (a.getTanqueOrigen() == null || a.getTanqueOrigen().isBlank())) {
             throw new ReglaNegocioException("El abastecimiento interno debe indicar el tanque de origen");
         }
+
         if (a.getTipoAbastecimiento() == TipoAbastecimiento.TERCERO) {
             if (a.getProveedor() == null || a.getProveedor().isBlank()) {
                 throw new ReglaNegocioException("La compra a tercero debe indicar el proveedor");
@@ -63,10 +69,30 @@ public class AbastecimientoCombustibleService implements AbastecimientoCombustib
         }
     }
 
+    private void validarProgramacion(AbastecimientoCombustible a) {
+        ProgramacionConsultaPort.ProgramacionOperacion programacion =
+                programacionConsulta.buscarProgramacion(a.getProgramacionId())
+                        .orElseThrow(() -> new ReglaNegocioException("La programación indicada no existe"));
+
+        if (!"PROGRAMADA".equals(programacion.estado())) {
+            throw new ReglaNegocioException("La programación debe estar en estado PROGRAMADA para registrar combustible");
+        }
+
+        if (!a.getConductorId().equals(programacion.conductorId())) {
+            throw new ReglaNegocioException("El conductor indicado no corresponde a la programación");
+        }
+
+        if (!a.getTractoId().equals(programacion.tractoId())) {
+            throw new ReglaNegocioException("El tracto indicado no corresponde a la programación");
+        }
+    }
+
     private AbastecimientoCombustible normalizar(AbastecimientoCombustible a, Long id) {
         BigDecimal costoTotal = a.getPrecioUnitario() == null
                 ? null
-                : a.getCantidadGalones().multiply(a.getPrecioUnitario()).setScale(2, RoundingMode.HALF_UP);
+                : a.getCantidadGalones()
+                        .multiply(a.getPrecioUnitario())
+                        .setScale(2, RoundingMode.HALF_UP);
 
         return AbastecimientoCombustible.builder()
                 .id(id)
