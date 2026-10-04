@@ -29,7 +29,7 @@ public class ViajeService implements ViajeUseCase {
             );
         }
 
-        validar(viaje);
+        validarKilometraje(viaje);
 
         return repo.guardar(Viaje.builder()
                 .programacionId(viaje.getProgramacionId())
@@ -56,7 +56,13 @@ public class ViajeService implements ViajeUseCase {
     @Override
     public Viaje actualizar(Long id, Viaje viaje) {
         Viaje actual = obtenerPorId(id);
-        validar(viaje);
+        EstadoViaje nuevoEstado = viaje.getEstado() == null
+                ? actual.getEstado()
+                : viaje.getEstado();
+
+        validarTransicion(actual.getEstado(), nuevoEstado);
+        validarKilometraje(viaje);
+        validarDatosPorEstado(nuevoEstado, viaje);
 
         return repo.guardar(Viaje.builder()
                 .id(actual.getId())
@@ -66,7 +72,7 @@ public class ViajeService implements ViajeUseCase {
                 .kilometrajeInicial(viaje.getKilometrajeInicial())
                 .kilometrajeFinal(viaje.getKilometrajeFinal())
                 .observacion(viaje.getObservacion())
-                .estado(viaje.getEstado() == null ? actual.getEstado() : viaje.getEstado())
+                .estado(nuevoEstado)
                 .build());
     }
 
@@ -90,7 +96,58 @@ public class ViajeService implements ViajeUseCase {
         }
     }
 
-    private void validar(Viaje viaje) {
+    private void validarTransicion(EstadoViaje actual, EstadoViaje nuevo) {
+        if (actual == nuevo) {
+            return;
+        }
+
+        boolean permitida = switch (actual) {
+            case PROGRAMADO -> nuevo == EstadoViaje.EN_VIAJE || nuevo == EstadoViaje.CANCELADO;
+            case EN_VIAJE -> nuevo == EstadoViaje.FINALIZADO || nuevo == EstadoViaje.CANCELADO;
+            case FINALIZADO, CANCELADO -> false;
+        };
+
+        if (!permitida) {
+            throw new ReglaNegocioException(
+                    "Transición de estado no permitida: " + actual + " -> " + nuevo
+            );
+        }
+    }
+
+    private void validarDatosPorEstado(EstadoViaje estado, Viaje viaje) {
+        if (estado == EstadoViaje.EN_VIAJE) {
+            if (viaje.getFechaInicio() == null) {
+                throw new ReglaNegocioException(
+                        "La fecha de inicio es obligatoria para iniciar el viaje"
+                );
+            }
+            if (viaje.getKilometrajeInicial() == null) {
+                throw new ReglaNegocioException(
+                        "El kilometraje inicial es obligatorio para iniciar el viaje"
+                );
+            }
+        }
+
+        if (estado == EstadoViaje.FINALIZADO) {
+            if (viaje.getFechaInicio() == null || viaje.getFechaFin() == null) {
+                throw new ReglaNegocioException(
+                        "Las fechas de inicio y fin son obligatorias para finalizar el viaje"
+                );
+            }
+            if (viaje.getKilometrajeInicial() == null || viaje.getKilometrajeFinal() == null) {
+                throw new ReglaNegocioException(
+                        "Los kilometrajes inicial y final son obligatorios para finalizar el viaje"
+                );
+            }
+            if (viaje.getFechaFin().isBefore(viaje.getFechaInicio())) {
+                throw new ReglaNegocioException(
+                        "La fecha de fin no puede ser anterior a la fecha de inicio"
+                );
+            }
+        }
+    }
+
+    private void validarKilometraje(Viaje viaje) {
         if (viaje.getKilometrajeInicial() != null
                 && viaje.getKilometrajeFinal() != null
                 && viaje.getKilometrajeFinal().compareTo(viaje.getKilometrajeInicial()) < 0) {
