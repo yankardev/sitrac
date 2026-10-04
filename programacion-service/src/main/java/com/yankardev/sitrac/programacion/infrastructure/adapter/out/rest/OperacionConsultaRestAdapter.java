@@ -89,6 +89,19 @@ public class OperacionConsultaRestAdapter implements OperacionConsultaPort {
     }
 
     @Override
+    public void cambiarDisponibilidadConductor(Long id, boolean disponible) {
+        try {
+            conductorClient.put()
+                    .uri("/api/conductores/{id}/disponibilidad", id)
+                    .body(new DisponibilidadConductorRequest(disponible))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException("No se pudo actualizar la disponibilidad del conductor");
+        }
+    }
+
+    @Override
     public Optional<TractoOperacion> buscarTracto(Long id) {
         try {
             TractoResponse response = flotaClient.get()
@@ -136,6 +149,8 @@ public class OperacionConsultaRestAdapter implements OperacionConsultaPort {
     }
 
     private record EstadoPedidoRequest(String estado) {}
+
+    private record DisponibilidadConductorRequest(Boolean disponible) {}
 
     private record PedidoResponse(
             Long id,
