@@ -47,6 +47,7 @@ public class ProgramacionService implements ProgramacionUseCase {
                 .build());
 
         consulta.cambiarEstadoPedido(p.getPedidoId(), "PROGRAMADO");
+        consulta.cambiarDisponibilidadConductor(p.getConductorId(), false);
         return creada;
     }
 
@@ -71,7 +72,7 @@ public class ProgramacionService implements ProgramacionUseCase {
             validarIntegracion(p, false);
         }
 
-        return repo.guardar(Programacion.builder()
+        Programacion actualizada = repo.guardar(Programacion.builder()
                 .id(actual.getId())
                 .pedidoId(p.getPedidoId())
                 .conductorId(p.getConductorId())
@@ -81,6 +82,14 @@ public class ProgramacionService implements ProgramacionUseCase {
                 .observacion(p.getObservacion())
                 .estado(nuevoEstado)
                 .build());
+
+        if (actual.getEstado() == EstadoProgramacion.PROGRAMADA
+                && nuevoEstado == EstadoProgramacion.CANCELADA) {
+            consulta.cambiarEstadoPedido(actual.getPedidoId(), "REGISTRADO");
+            consulta.cambiarDisponibilidadConductor(actual.getConductorId(), true);
+        }
+
+        return actualizada;
     }
 
     @Override
