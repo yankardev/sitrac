@@ -36,7 +36,7 @@ public class ProgramacionService implements ProgramacionUseCase {
         validarDisponibilidadLocal(p, null);
         validarIntegracion(p, true);
 
-        return repo.guardar(Programacion.builder()
+        Programacion creada = repo.guardar(Programacion.builder()
                 .pedidoId(p.getPedidoId())
                 .conductorId(p.getConductorId())
                 .tractoId(p.getTractoId())
@@ -45,6 +45,9 @@ public class ProgramacionService implements ProgramacionUseCase {
                 .observacion(p.getObservacion())
                 .estado(EstadoProgramacion.PROGRAMADA)
                 .build());
+
+        consulta.cambiarEstadoPedido(p.getPedidoId(), "PROGRAMADO");
+        return creada;
     }
 
     @Override
