@@ -11,5 +11,5 @@ public class TractoService implements TractoUseCase {
     public Tracto obtenerPorId(Long id){return repo.buscarPorId(id).orElseThrow(()->new RecursoNoEncontradoException("Tracto",id));}
     public Tracto actualizar(Long id,Tracto t){Tracto a=obtenerPorId(id); if(repo.existePorPlacaYIdDistinto(t.getPlaca(),id)) throw new ReglaNegocioException("Ya existe otro tracto con la placa "+t.getPlaca());
         return repo.guardar(Tracto.builder().id(a.getId()).placa(t.getPlaca()).marca(t.getMarca()).modelo(t.getModelo()).anio(t.getAnio()).capacidadToneladas(t.getCapacidadToneladas()).estado(t.getEstado()==null?a.getEstado():t.getEstado()).activo(t.isActivo()).build());}
-    public void eliminar(Long id){obtenerPorId(id);repo.eliminarPorId(id);}
+    public Tracto cambiarEstado(Long id,EstadoUnidad estado){Tracto a=obtenerPorId(id); return repo.guardar(Tracto.builder().id(a.getId()).placa(a.getPlaca()).marca(a.getMarca()).modelo(a.getModelo()).anio(a.getAnio()).capacidadToneladas(a.getCapacidadToneladas()).estado(estado).activo(a.isActivo()).build());}\n    public void eliminar(Long id){obtenerPorId(id);repo.eliminarPorId(id);}
 }
