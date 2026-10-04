@@ -14,5 +14,7 @@ public interface ConductorUseCase {
 
     Conductor actualizar(Long id, Conductor conductor);
 
+    Conductor cambiarDisponibilidad(Long id, boolean disponible);
+
     void eliminar(Long id);
 }
