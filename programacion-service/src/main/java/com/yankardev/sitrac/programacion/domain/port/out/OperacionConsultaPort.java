@@ -14,6 +14,8 @@ public interface OperacionConsultaPort {
 
     Optional<SemirremolqueOperacion> buscarSemirremolque(Long id);
 
+    void cambiarEstadoPedido(Long id, String estado);
+
     record PedidoOperacion(
             Long id,
             String tipoCarga,
