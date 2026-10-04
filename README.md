@@ -6,7 +6,7 @@ El proyecto se desarrolla para el curso **Desarrollo de Servicios Web II** utili
 
 Cada microservicio mantiene una organización interna inspirada en **arquitectura hexagonal**, separando dominio, casos de uso, entrada REST y persistencia.
 
-> Estado actual: están implementados diez microservicios base. La integración distribuida ya se inició en programacion-service y continuará con el resto del flujo operativo.
+> Estado actual: están implementados diez microservicios base. Ya están integrados programacion-service con pedido/conductor/flota y viaje-service con programacion-service.
 
 ## Microservicios
 
@@ -45,7 +45,7 @@ Viaje
 Cierre y trazabilidad
 ```
 
-## Integración implementada en programacion-service
+## Integración de programacion-service
 
 Antes de crear una programación, el servicio consulta por REST a:
 
@@ -53,7 +53,7 @@ Antes de crear una programación, el servicio consulta por REST a:
 - conductor-service (:8084)
 - flota-service (:8085)
 
-Se validan actualmente:
+Se validan:
 
 - existencia y estado del pedido;
 - conductor activo, disponible y con licencia vigente;
@@ -81,6 +81,23 @@ CONDUCTOR_SERVICE_URL=http://localhost:8084
 FLOTA_SERVICE_URL=http://localhost:8085
 ```
 
+## Integración de viaje-service
+
+Antes de crear un viaje, viaje-service consulta por REST a programacion-service (:8086).
+
+Valida:
+
+- que la programación exista;
+- que la programación esté en estado PROGRAMADA;
+- que no exista otro viaje asociado a la misma programación;
+- coherencia de kilometraje inicial y final.
+
+URL configurable:
+
+```text
+PROGRAMACION_SERVICE_URL=http://localhost:8086
+```
+
 ## combustible-service — :8090
 
 ```http
@@ -98,7 +115,7 @@ INTERNO
 TERCERO
 ```
 
-La siguiente fase de integración conectará viaje, SOMMA, mantenimiento y combustible con la programación validada.
+La siguiente fase conectará SOMMA, mantenimiento y combustible con la programación validada.
 
 **SITRAC — Sistema Integral de Transporte de Carga**  
 Desarrollo de Servicios Web II  
