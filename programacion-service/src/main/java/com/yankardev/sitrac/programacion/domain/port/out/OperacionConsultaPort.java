@@ -16,6 +16,8 @@ public interface OperacionConsultaPort {
 
     void cambiarEstadoPedido(Long id, String estado);
 
+    void cambiarDisponibilidadConductor(Long id, boolean disponible);
+
     record PedidoOperacion(
             Long id,
             String tipoCarga,
