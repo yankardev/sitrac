@@ -53,6 +53,19 @@ public class OperacionConsultaRestAdapter implements OperacionConsultaPort {
     }
 
     @Override
+    public void cambiarEstadoPedido(Long id, String estado) {
+        try {
+            pedidoClient.put()
+                    .uri("/api/pedidos/{id}/estado", id)
+                    .body(new EstadoPedidoRequest(estado))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException("No se pudo actualizar el estado del pedido");
+        }
+    }
+
+    @Override
     public Optional<ConductorOperacion> buscarConductor(Long id) {
         try {
             ConductorResponse response = conductorClient.get()
@@ -121,6 +134,8 @@ public class OperacionConsultaRestAdapter implements OperacionConsultaPort {
             throw new ReglaNegocioException("No se pudo consultar flota-service para el semirremolque");
         }
     }
+
+    private record EstadoPedidoRequest(String estado) {}
 
     private record PedidoResponse(
             Long id,
