@@ -11,5 +11,5 @@ public class SemirremolqueService implements SemirremolqueUseCase {
     public Semirremolque obtenerPorId(Long id){return repo.buscarPorId(id).orElseThrow(()->new RecursoNoEncontradoException("Semirremolque",id));}
     public Semirremolque actualizar(Long id,Semirremolque s){Semirremolque a=obtenerPorId(id); if(repo.existePorPlacaYIdDistinto(s.getPlaca(),id)) throw new ReglaNegocioException("Ya existe otro semirremolque con la placa "+s.getPlaca());
         return repo.guardar(Semirremolque.builder().id(a.getId()).placa(s.getPlaca()).tipo(s.getTipo()).capacidadToneladas(s.getCapacidadToneladas()).estado(s.getEstado()==null?a.getEstado():s.getEstado()).activo(s.isActivo()).build());}
-    public void eliminar(Long id){obtenerPorId(id);repo.eliminarPorId(id);}
+    public Semirremolque cambiarEstado(Long id,EstadoUnidad estado){Semirremolque a=obtenerPorId(id); return repo.guardar(Semirremolque.builder().id(a.getId()).placa(a.getPlaca()).tipo(a.getTipo()).capacidadToneladas(a.getCapacidadToneladas()).estado(estado).activo(a.isActivo()).build());}\n    public void eliminar(Long id){obtenerPorId(id);repo.eliminarPorId(id);}
 }
