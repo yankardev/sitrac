@@ -125,6 +125,32 @@ public class OperacionConsultaRestAdapter implements OperacionConsultaPort {
     }
 
     @Override
+    public void cambiarEstadoTracto(Long id, String estado) {
+        try {
+            flotaClient.put()
+                    .uri("/api/tractos/{id}/estado", id)
+                    .body(new EstadoUnidadRequest(estado))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException("No se pudo actualizar el estado del tracto");
+        }
+    }
+
+    @Override
+    public void cambiarEstadoSemirremolque(Long id, String estado) {
+        try {
+            flotaClient.put()
+                    .uri("/api/semirremolques/{id}/estado", id)
+                    .body(new EstadoUnidadRequest(estado))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException("No se pudo actualizar el estado del semirremolque");
+        }
+    }
+
+    @Override
     public Optional<SemirremolqueOperacion> buscarSemirremolque(Long id) {
         try {
             SemirremolqueResponse response = flotaClient.get()
@@ -151,6 +177,8 @@ public class OperacionConsultaRestAdapter implements OperacionConsultaPort {
     private record EstadoPedidoRequest(String estado) {}
 
     private record DisponibilidadConductorRequest(Boolean disponible) {}
+
+    private record EstadoUnidadRequest(String estado) {}
 
     private record PedidoResponse(
             Long id,
