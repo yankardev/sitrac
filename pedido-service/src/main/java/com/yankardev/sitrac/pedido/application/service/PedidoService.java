@@ -5,6 +5,7 @@ import com.yankardev.sitrac.pedido.application.exception.ReglaNegocioException;
 import com.yankardev.sitrac.pedido.domain.model.EstadoPedido;
 import com.yankardev.sitrac.pedido.domain.model.Pedido;
 import com.yankardev.sitrac.pedido.domain.port.in.PedidoUseCase;
+import com.yankardev.sitrac.pedido.domain.port.out.ClienteConsultaPort;
 import com.yankardev.sitrac.pedido.domain.port.out.PedidoRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,15 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class PedidoService implements PedidoUseCase {
+
     private final PedidoRepositoryPort repository;
+    private final ClienteConsultaPort clienteConsulta;
 
     @Override
     public Pedido crear(Pedido pedido) {
         validar(pedido);
+        validarCliente(pedido.getClienteId());
+
         Pedido nuevo = Pedido.builder()
                 .clienteId(pedido.getClienteId())
                 .tipoCarga(pedido.getTipoCarga())
@@ -30,20 +35,27 @@ public class PedidoService implements PedidoUseCase {
                 .fechaSolicitud(pedido.getFechaSolicitud())
                 .estado(EstadoPedido.REGISTRADO)
                 .build();
+
         return repository.guardar(nuevo);
     }
 
-    @Override public List<Pedido> listar() { return repository.listar(); }
+    @Override
+    public List<Pedido> listar() {
+        return repository.listar();
+    }
 
     @Override
     public Pedido obtenerPorId(Long id) {
-        return repository.buscarPorId(id).orElseThrow(() -> new PedidoNoEncontradoException(id));
+        return repository.buscarPorId(id)
+                .orElseThrow(() -> new PedidoNoEncontradoException(id));
     }
 
     @Override
     public Pedido actualizar(Long id, Pedido pedido) {
         Pedido actual = obtenerPorId(id);
         validar(pedido);
+        validarCliente(pedido.getClienteId());
+
         Pedido actualizado = Pedido.builder()
                 .id(actual.getId())
                 .clienteId(pedido.getClienteId())
@@ -55,6 +67,7 @@ public class PedidoService implements PedidoUseCase {
                 .fechaSolicitud(pedido.getFechaSolicitud())
                 .estado(pedido.getEstado() == null ? actual.getEstado() : pedido.getEstado())
                 .build();
+
         return repository.guardar(actualizado);
     }
 
@@ -65,11 +78,23 @@ public class PedidoService implements PedidoUseCase {
     }
 
     private void validar(Pedido pedido) {
-        if (pedido.getToneladas() == null || pedido.getToneladas().compareTo(BigDecimal.ZERO) <= 0) {
+        if (pedido.getToneladas() == null
+                || pedido.getToneladas().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ReglaNegocioException("Las toneladas deben ser mayores que cero");
         }
-        if (pedido.getOrigen() != null && pedido.getOrigen().equalsIgnoreCase(pedido.getDestino())) {
+
+        if (pedido.getOrigen() != null
+                && pedido.getOrigen().equalsIgnoreCase(pedido.getDestino())) {
             throw new ReglaNegocioException("El origen y el destino no pueden ser iguales");
+        }
+    }
+
+    private void validarCliente(Long clienteId) {
+        ClienteConsultaPort.ClienteOperacion cliente = clienteConsulta.buscarCliente(clienteId)
+                .orElseThrow(() -> new ReglaNegocioException("El cliente indicado no existe"));
+
+        if (!cliente.activo()) {
+            throw new ReglaNegocioException("El cliente indicado se encuentra inactivo");
         }
     }
 }
