@@ -72,6 +72,23 @@ public class PedidoService implements PedidoUseCase {
     }
 
     @Override
+    public Pedido cambiarEstado(Long id, EstadoPedido estado) {
+        Pedido actual = obtenerPorId(id);
+
+        return repository.guardar(Pedido.builder()
+                .id(actual.getId())
+                .clienteId(actual.getClienteId())
+                .tipoCarga(actual.getTipoCarga())
+                .descripcionCarga(actual.getDescripcionCarga())
+                .toneladas(actual.getToneladas())
+                .origen(actual.getOrigen())
+                .destino(actual.getDestino())
+                .fechaSolicitud(actual.getFechaSolicitud())
+                .estado(estado)
+                .build());
+    }
+
+    @Override
     public void eliminar(Long id) {
         obtenerPorId(id);
         repository.eliminarPorId(id);
