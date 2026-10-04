@@ -48,6 +48,8 @@ public class ProgramacionService implements ProgramacionUseCase {
 
         consulta.cambiarEstadoPedido(p.getPedidoId(), "PROGRAMADO");
         consulta.cambiarDisponibilidadConductor(p.getConductorId(), false);
+        consulta.cambiarEstadoTracto(p.getTractoId(), "ASIGNADO");
+        consulta.cambiarEstadoSemirremolque(p.getSemirremolqueId(), "ASIGNADO");
         return creada;
     }
 
@@ -87,6 +89,8 @@ public class ProgramacionService implements ProgramacionUseCase {
                 && nuevoEstado == EstadoProgramacion.CANCELADA) {
             consulta.cambiarEstadoPedido(actual.getPedidoId(), "REGISTRADO");
             consulta.cambiarDisponibilidadConductor(actual.getConductorId(), true);
+            consulta.cambiarEstadoTracto(actual.getTractoId(), "DISPONIBLE");
+            consulta.cambiarEstadoSemirremolque(actual.getSemirremolqueId(), "DISPONIBLE");
         }
 
         return actualizada;
