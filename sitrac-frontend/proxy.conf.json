@@ -41,6 +41,12 @@
     "changeOrigin": true,
     "logLevel": "debug"
   },
+  "/api/mantenimientos": {
+    "target": "http://localhost:8088",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
   "/api/combustible": {
     "target": "http://localhost:8090",
     "secure": false,
