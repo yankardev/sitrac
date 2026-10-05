@@ -54,7 +54,11 @@ public class MantenimientoService implements MantenimientoUseCase {
         validar(mantenimiento);
         validarUnidad(mantenimiento.getTipoUnidad(), mantenimiento.getUnidadId());
 
-        return repo.guardar(Mantenimiento.builder()
+        EstadoMantenimiento nuevoEstado = mantenimiento.getEstado() == null
+                ? actual.getEstado()
+                : mantenimiento.getEstado();
+
+        Mantenimiento actualizado = repo.guardar(Mantenimiento.builder()
                 .id(actual.getId())
                 .tipoUnidad(mantenimiento.getTipoUnidad())
                 .unidadId(mantenimiento.getUnidadId())
@@ -63,14 +67,42 @@ public class MantenimientoService implements MantenimientoUseCase {
                 .fechaFin(mantenimiento.getFechaFin())
                 .descripcion(mantenimiento.getDescripcion())
                 .costo(mantenimiento.getCosto())
-                .estado(mantenimiento.getEstado() == null ? actual.getEstado() : mantenimiento.getEstado())
+                .estado(nuevoEstado)
                 .build());
+
+        sincronizarEstadoFlota(actual, actualizado);
+        return actualizado;
     }
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Mantenimiento actual = obtenerPorId(id);
         repo.eliminarPorId(id);
+
+        if (actual.getEstado() == EstadoMantenimiento.EN_PROCESO) {
+            flotaConsulta.cambiarEstadoUnidad(actual.getTipoUnidad(), actual.getUnidadId(), "DISPONIBLE");
+        }
+    }
+
+    private void sincronizarEstadoFlota(Mantenimiento anterior, Mantenimiento actual) {
+        boolean cambioUnidad = anterior.getTipoUnidad() != actual.getTipoUnidad()
+                || !anterior.getUnidadId().equals(actual.getUnidadId());
+
+        if (cambioUnidad && anterior.getEstado() == EstadoMantenimiento.EN_PROCESO) {
+            flotaConsulta.cambiarEstadoUnidad(anterior.getTipoUnidad(), anterior.getUnidadId(), "DISPONIBLE");
+        }
+
+        if (actual.getEstado() == EstadoMantenimiento.EN_PROCESO) {
+            flotaConsulta.cambiarEstadoUnidad(actual.getTipoUnidad(), actual.getUnidadId(), "MANTENIMIENTO");
+            return;
+        }
+
+        if (!cambioUnidad
+                && anterior.getEstado() == EstadoMantenimiento.EN_PROCESO
+                && (actual.getEstado() == EstadoMantenimiento.FINALIZADO
+                || actual.getEstado() == EstadoMantenimiento.CANCELADO)) {
+            flotaConsulta.cambiarEstadoUnidad(actual.getTipoUnidad(), actual.getUnidadId(), "DISPONIBLE");
+        }
     }
 
     private void validar(Mantenimiento mantenimiento) {
