@@ -1,1 +1,158 @@
-<p>mantenimiento works!</p>
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Control / Mantenimiento</span>
+    <h1>Gestión de mantenimiento</h1>
+    <p>Programa y controla mantenimientos preventivos y correctivos de la flota.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">+ Nuevo mantenimiento</button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">✓ {{ mensaje }}</div>
+<div class="alert error" *ngIf="error">! {{ error }}</div>
+
+<section class="summary-grid">
+  <article class="summary-card"><span>Total</span><strong>{{ mantenimientos.length }}</strong></article>
+  <article class="summary-card"><span>Programados</span><strong>{{ totalProgramados }}</strong></article>
+  <article class="summary-card warning"><span>En proceso</span><strong>{{ totalEnProceso }}</strong></article>
+  <article class="summary-card success-card"><span>Finalizados</span><strong>{{ totalFinalizados }}</strong></article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Ordenes de mantenimiento</h2>
+      <p>Historial y estado actual de las intervenciones</p>
+    </div>
+
+    <div class="filters">
+      <input type="search" [(ngModel)]="busqueda" placeholder="Buscar unidad o descripción" />
+      <select [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="PROGRAMADO">Programado</option>
+        <option value="EN_PROCESO">En proceso</option>
+        <option value="FINALIZADO">Finalizado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">Cargando mantenimientos...</div>
+
+  <div class="table-wrapper" *ngIf="!cargando && mantenimientosFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Orden</th>
+          <th>Unidad</th>
+          <th>Tipo</th>
+          <th>Inicio</th>
+          <th>Fin</th>
+          <th>Costo</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of mantenimientosFiltrados">
+          <td><strong>#MANT-{{ codigo(item.id) }}</strong><span class="secondary">{{ item.descripcion }}</span></td>
+          <td>{{ unidadEtiqueta(item) }}</td>
+          <td><span class="type-badge">{{ item.tipoMantenimiento }}</span></td>
+          <td>{{ item.fechaInicio | date:'dd/MM/yyyy':'UTC' }}</td>
+          <td>{{ item.fechaFin ? (item.fechaFin | date:'dd/MM/yyyy':'UTC') : '—' }}</td>
+          <td>{{ item.costo !== null ? ('S/ ' + (item.costo | number:'1.2-2')) : '—' }}</td>
+          <td><span class="status" [ngClass]="item.estado.toLowerCase()">{{ etiquetaEstado(item.estado) }}</span></td>
+          <td>
+            <div class="row-actions">
+              <button *ngIf="item.estado === 'PROGRAMADO'" type="button" title="Iniciar" (click)="cambiarEstado(item, 'EN_PROCESO')">▶</button>
+              <button *ngIf="item.estado === 'EN_PROCESO'" type="button" title="Finalizar" (click)="cambiarEstado(item, 'FINALIZADO')">✓</button>
+              <button *ngIf="item.estado === 'PROGRAMADO' || item.estado === 'EN_PROCESO'" type="button" title="Cancelar" (click)="cambiarEstado(item, 'CANCELADO')">⊘</button>
+              <button type="button" title="Editar" (click)="editar(item)">✎</button>
+              <button type="button" title="Eliminar" (click)="eliminar(item)">×</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && mantenimientosFiltrados.length === 0">
+    <h3>No hay mantenimientos para mostrar</h3>
+    <p>Registra una orden para comenzar el control de la flota.</p>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ editandoId === null ? 'NUEVA ORDEN' : 'EDITAR ORDEN' }}</span>
+        <h2>{{ editandoId === null ? 'Registrar mantenimiento' : 'Actualizar mantenimiento' }}</h2>
+      </div>
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #form="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Tipo de unidad *</span>
+          <select name="tipoUnidad" [(ngModel)]="formulario.tipoUnidad" (ngModelChange)="alCambiarTipoUnidad()" required>
+            <option value="TRACTO">Tracto</option>
+            <option value="SEMIRREMOLQUE">Semirremolque</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Unidad *</span>
+          <select name="unidadId" [(ngModel)]="formulario.unidadId" required>
+            <option [ngValue]="null" disabled>Selecciona una unidad</option>
+            <option *ngFor="let unidad of unidadesDisponibles" [ngValue]="unidad.id">{{ unidadOpcion(unidad) }}</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Tipo de mantenimiento *</span>
+          <select name="tipoMantenimiento" [(ngModel)]="formulario.tipoMantenimiento" required>
+            <option value="PREVENTIVO">Preventivo</option>
+            <option value="CORRECTIVO">Correctivo</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Fecha de inicio *</span>
+          <input name="fechaInicio" type="date" [(ngModel)]="formulario.fechaInicio" required />
+        </label>
+
+        <label class="field">
+          <span>Fecha de fin</span>
+          <input name="fechaFin" type="date" [(ngModel)]="formulario.fechaFin" />
+        </label>
+
+        <label class="field">
+          <span>Costo</span>
+          <input name="costo" type="number" min="0" step="0.01" [(ngModel)]="formulario.costo" placeholder="0.00" />
+        </label>
+
+        <label class="field full">
+          <span>Descripción *</span>
+          <textarea name="descripcion" rows="4" maxlength="500" [(ngModel)]="formulario.descripcion" required placeholder="Trabajo a realizar, observaciones, repuestos, etc."></textarea>
+        </label>
+
+        <label class="field full" *ngIf="editandoId !== null">
+          <span>Estado</span>
+          <select name="estado" [(ngModel)]="formulario.estado">
+            <option value="PROGRAMADO">Programado</option>
+            <option value="EN_PROCESO">En proceso</option>
+            <option value="FINALIZADO">Finalizado</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" (click)="cerrarFormulario()" [disabled]="guardando">Cancelar</button>
+        <button class="primary-button" type="submit" [disabled]="form.invalid || guardando">{{ guardando ? 'Guardando...' : 'Guardar' }}</button>
+      </div>
+    </form>
+  </section>
+</div>
