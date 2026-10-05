@@ -32,7 +32,14 @@ if errorlevel 1 (
 )
 
 echo.
-echo IMPORTANTE: MySQL debe estar iniciado antes de continuar.
+echo Configuracion de MySQL para esta maquina.
+set "MYSQL_USER=root"
+set /p MYSQL_USER_INPUT=Usuario MySQL [root]: 
+if not "%MYSQL_USER_INPUT%"=="" set "MYSQL_USER=%MYSQL_USER_INPUT%"
+set /p MYSQL_PASSWORD=Contrasena MySQL [Enter si no tiene]: 
+
+echo.
+echo IMPORTANTE: MySQL debe estar iniciado en localhost:3306.
 echo Se abriran ventanas separadas para cada microservicio y el frontend.
 echo.
 
@@ -53,6 +60,7 @@ echo.
 echo Procesos lanzados.
 echo Backend: 8081 al 8090
 echo Frontend: http://localhost:4200
+echo Usuario MySQL: %MYSQL_USER%
 echo.
 echo La primera ejecucion puede demorar mientras Maven y npm descargan dependencias.
 pause
