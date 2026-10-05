@@ -72,16 +72,20 @@
 
     <div class="sidebar-footer">
       <div class="user-mini">
-        <div class="avatar">A</div>
+        <div class="avatar">{{ inicialUsuario }}</div>
         <div>
-          <strong>Administrador</strong>
-          <span>ADMIN</span>
+          <strong>{{ usuario?.nombreCompleto || 'Usuario SITRAC' }}</strong>
+          <span>{{ usuario?.rol || 'SIN ROL' }}</span>
         </div>
       </div>
 
-      <a routerLink="/login" class="logout" title="Cerrar sesión">
+      <button
+        type="button"
+        class="logout"
+        title="Cerrar sesión"
+        (click)="cerrarSesion()">
         Salir
-      </a>
+      </button>
     </div>
   </aside>
 
