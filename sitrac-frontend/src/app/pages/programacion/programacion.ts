@@ -7,7 +7,7 @@ import { Pedido, TipoCarga } from '../../core/models/pedido.model';
 import {
   ConductorOperacion,
   EstadoProgramacion,
-  Programacion,
+  Programacion as ProgramacionModel,
   ProgramacionForm,
   SemirremolqueOperacion,
   TractoOperacion
@@ -25,7 +25,7 @@ export class Programacion implements OnInit {
   private readonly programacionService = inject(ProgramacionService);
   private readonly pedidoService = inject(PedidoService);
 
-  programaciones: Programacion[] = [];
+  programaciones: ProgramacionModel[] = [];
   pedidos: Pedido[] = [];
   conductores: ConductorOperacion[] = [];
   tractos: TractoOperacion[] = [];
@@ -48,7 +48,7 @@ export class Programacion implements OnInit {
     this.cargarDatos();
   }
 
-  get programacionesFiltradas(): Programacion[] {
+  get programacionesFiltradas(): ProgramacionModel[] {
     const termino = this.busqueda.trim().toLowerCase();
 
     return this.programaciones.filter(programacion => {
@@ -144,7 +144,7 @@ export class Programacion implements OnInit {
     this.mostrarFormulario = true;
   }
 
-  editar(programacion: Programacion): void {
+  editar(programacion: ProgramacionModel): void {
     this.programacionEditandoId = programacion.id;
     this.formulario = {
       pedidoId: programacion.pedidoId,
@@ -221,7 +221,7 @@ export class Programacion implements OnInit {
     });
   }
 
-  cancelar(programacion: Programacion): void {
+  cancelar(programacion: ProgramacionModel): void {
     if (programacion.estado !== 'PROGRAMADA') {
       return;
     }
@@ -258,7 +258,7 @@ export class Programacion implements OnInit {
     });
   }
 
-  eliminar(programacion: Programacion): void {
+  eliminar(programacion: ProgramacionModel): void {
     if (programacion.estado !== 'CANCELADA') {
       this.error = 'Solo se pueden eliminar programaciones canceladas.';
       return;
