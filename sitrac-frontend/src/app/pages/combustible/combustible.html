@@ -1,1 +1,337 @@
-<p>combustible works!</p>
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Operaciones / Combustible</span>
+    <h1>Control de combustible</h1>
+    <p>Registra abastecimientos internos y compras a terceros vinculadas a la operación.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    <span>+</span>
+    Nuevo abastecimiento
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">◆</div>
+    <div>
+      <span>Abastecimientos</span>
+      <strong>{{ abastecimientos.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">◉</div>
+    <div>
+      <span>Galones registrados</span>
+      <strong>{{ totalGalones | number:'1.0-2' }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">S/</div>
+    <div>
+      <span>Costo acumulado</span>
+      <strong>S/ {{ costoTotal | number:'1.2-2' }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon purple">I/T</div>
+    <div>
+      <span>Internos / terceros</span>
+      <strong>{{ totalInternos }} / {{ totalTerceros }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Historial de abastecimientos</h2>
+      <p>Consumo de combustible asociado a las programaciones de transporte</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar por unidad, conductor o comprobante"
+        />
+      </label>
+
+      <select class="type-filter" [(ngModel)]="filtroTipo">
+        <option value="TODOS">Todos los tipos</option>
+        <option value="INTERNO">Interno</option>
+        <option value="TERCERO">Tercero</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando abastecimientos...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && abastecimientosFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Registro</th>
+          <th>Programación</th>
+          <th>Unidad / conductor</th>
+          <th>Tipo</th>
+          <th>Galones</th>
+          <th>Kilometraje</th>
+          <th>Costo</th>
+          <th>Fecha</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let item of abastecimientosFiltrados">
+          <td>
+            <strong class="record-code">#AB-{{ codigo(item.id) }}</strong>
+            <span class="secondary" *ngIf="item.viajeId">Viaje #{{ item.viajeId }}</span>
+            <span class="secondary" *ngIf="!item.viajeId">Previo al viaje</span>
+          </td>
+
+          <td>
+            <strong>{{ codigoProgramacion(item.programacionId) }}</strong>
+            <span class="secondary">Programación #{{ item.programacionId }}</span>
+          </td>
+
+          <td>
+            <strong class="unit-name">{{ tractoPlaca(item.tractoId) }}</strong>
+            <span class="secondary">{{ conductorNombre(item.conductorId) }}</span>
+          </td>
+
+          <td>
+            <span class="type-badge" [class.internal]="item.tipoAbastecimiento === 'INTERNO'" [class.third-party]="item.tipoAbastecimiento === 'TERCERO'">
+              {{ tipoEtiqueta(item.tipoAbastecimiento) }}
+            </span>
+            <span class="secondary" *ngIf="item.tipoAbastecimiento === 'INTERNO'">
+              {{ item.tanqueOrigen || 'Tanque interno' }}
+            </span>
+            <span class="secondary" *ngIf="item.tipoAbastecimiento === 'TERCERO'">
+              {{ item.proveedor || 'Proveedor externo' }}
+            </span>
+          </td>
+
+          <td>
+            <strong>{{ item.cantidadGalones | number:'1.0-2' }} gal</strong>
+          </td>
+
+          <td>
+            {{ item.kilometraje | number:'1.0-0' }} km
+          </td>
+
+          <td>
+            <strong *ngIf="item.costoTotal !== null">S/ {{ item.costoTotal | number:'1.2-2' }}</strong>
+            <span class="secondary" *ngIf="item.costoTotal === null">Sin costo registrado</span>
+          </td>
+
+          <td>
+            {{ item.fechaHora | date:'dd/MM/yyyy HH:mm' }}
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <button class="icon-button edit" type="button" title="Editar" (click)="editar(item)">✎</button>
+              <button class="icon-button delete" type="button" title="Eliminar" (click)="eliminar(item)">×</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && abastecimientosFiltrados.length === 0">
+    <div class="empty-icon">◆</div>
+    <h3>No hay abastecimientos para mostrar</h3>
+    <p *ngIf="busqueda || filtroTipo !== 'TODOS'">No encontramos resultados con los filtros seleccionados.</p>
+    <p *ngIf="!busqueda && filtroTipo === 'TODOS'">Registra el primer abastecimiento de combustible.</p>
+    <button type="button" (click)="abrirNuevo()">+ Registrar abastecimiento</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ abastecimientoEditandoId === null ? 'NUEVO REGISTRO' : 'EDITAR REGISTRO' }}</span>
+        <h2>{{ abastecimientoEditandoId === null ? 'Registrar combustible' : 'Actualizar combustible' }}</h2>
+        <p>Relaciona el abastecimiento con una programación activa.</p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #combustibleForm="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <label class="field full">
+          <span>Programación *</span>
+          <select
+            name="programacionId"
+            [(ngModel)]="formulario.programacionId"
+            (ngModelChange)="alCambiarProgramacion()"
+            required>
+            <option [ngValue]="null" disabled>Selecciona una programación</option>
+            <option
+              *ngFor="let programacion of programacionesDisponibles"
+              [ngValue]="programacion.id">
+              {{ codigoProgramacion(programacion.id) }} · {{ tractoPlaca(programacion.tractoId) }} · {{ conductorNombre(programacion.conductorId) }}
+            </option>
+          </select>
+        </label>
+
+        <div class="assignment-card full" *ngIf="formulario.programacionId !== null">
+          <div>
+            <span>Conductor asignado</span>
+            <strong>{{ formulario.conductorId ? conductorNombre(formulario.conductorId) : 'Sin asignar' }}</strong>
+          </div>
+          <div>
+            <span>Tracto asignado</span>
+            <strong>{{ formulario.tractoId ? tractoPlaca(formulario.tractoId) : 'Sin asignar' }}</strong>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>Viaje relacionado</span>
+          <select name="viajeId" [(ngModel)]="formulario.viajeId">
+            <option [ngValue]="null">Sin viaje / abastecimiento previo</option>
+            <option *ngFor="let viaje of viajesDeProgramacion" [ngValue]="viaje.id">
+              Viaje #{{ viaje.id }} · {{ viaje.estado.replace('_', ' ') }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Tipo de abastecimiento *</span>
+          <select
+            name="tipoAbastecimiento"
+            [(ngModel)]="formulario.tipoAbastecimiento"
+            (ngModelChange)="alCambiarTipo()"
+            required>
+            <option value="INTERNO">Interno</option>
+            <option value="TERCERO">Compra a tercero</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Fecha y hora *</span>
+          <input name="fechaHora" type="datetime-local" [(ngModel)]="formulario.fechaHora" required />
+        </label>
+
+        <label class="field">
+          <span>Cantidad de galones *</span>
+          <input
+            name="cantidadGalones"
+            type="number"
+            min="0.01"
+            step="0.01"
+            [(ngModel)]="formulario.cantidadGalones"
+            placeholder="35"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Kilometraje *</span>
+          <input
+            name="kilometraje"
+            type="number"
+            min="0"
+            step="0.01"
+            [(ngModel)]="formulario.kilometraje"
+            placeholder="125000"
+            required
+          />
+        </label>
+
+        <label class="field" *ngIf="formulario.tipoAbastecimiento === 'TERCERO'">
+          <span>Precio por galón</span>
+          <input
+            name="precioUnitario"
+            type="number"
+            min="0"
+            step="0.01"
+            [(ngModel)]="formulario.precioUnitario"
+            placeholder="15.90"
+          />
+        </label>
+
+        <label class="field full" *ngIf="formulario.tipoAbastecimiento === 'INTERNO'">
+          <span>Tanque de origen *</span>
+          <input
+            name="tanqueOrigen"
+            type="text"
+            maxlength="100"
+            [(ngModel)]="formulario.tanqueOrigen"
+            placeholder="Ej. Tanque Base Trujillo 01"
+            required
+          />
+        </label>
+
+        <ng-container *ngIf="formulario.tipoAbastecimiento === 'TERCERO'">
+          <label class="field">
+            <span>Proveedor *</span>
+            <input
+              name="proveedor"
+              type="text"
+              maxlength="150"
+              [(ngModel)]="formulario.proveedor"
+              placeholder="Ej. Primax"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span>Número de comprobante *</span>
+            <input
+              name="numeroComprobante"
+              type="text"
+              maxlength="80"
+              [(ngModel)]="formulario.numeroComprobante"
+              placeholder="F001-000123"
+              required
+            />
+          </label>
+        </ng-container>
+
+        <label class="field full">
+          <span>Observación</span>
+          <textarea
+            name="observacion"
+            rows="3"
+            maxlength="500"
+            [(ngModel)]="formulario.observacion"
+            placeholder="Detalle adicional del abastecimiento"></textarea>
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" [disabled]="guardando" (click)="cerrarFormulario()">
+          Cancelar
+        </button>
+
+        <button class="primary-button" type="submit" [disabled]="combustibleForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (abastecimientoEditandoId === null ? 'Registrar abastecimiento' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
