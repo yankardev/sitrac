@@ -54,7 +54,7 @@ start "SITRAC mantenimiento-service 8088" /D "%ROOT%" cmd /k "call mvnw.cmd -pl 
 start "SITRAC somma-service 8089" /D "%ROOT%" cmd /k "call mvnw.cmd -pl somma-service spring-boot:run"
 start "SITRAC combustible-service 8090" /D "%ROOT%" cmd /k "call mvnw.cmd -pl combustible-service spring-boot:run"
 
-start "SITRAC Angular 4200" /D "%ROOT%sitrac-frontend" cmd /k "if not exist node_modules call npm install && call npm start"
+start "SITRAC Angular 4200" /D "%ROOT%sitrac-frontend" cmd /k "if not exist node_modules call npm install & call npm start"
 
 echo.
 echo Procesos lanzados.
