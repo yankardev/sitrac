@@ -10,7 +10,7 @@ interface CacheEntry {
   response: HttpResponse<unknown>;
 }
 
-const CACHE_TTL_MS = 45_000;
+const CACHE_TTL_MS = 5 * 60_000;
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Observable<HttpEvent<unknown>>>();
 
