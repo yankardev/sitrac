@@ -5,5 +5,7 @@ import java.util.Optional;
 
 public interface FlotaConsultaPort {
     Optional<UnidadFlota> buscarUnidad(TipoUnidad tipoUnidad, Long unidadId);
+    void cambiarEstadoUnidad(TipoUnidad tipoUnidad, Long unidadId, String estado);
+
     record UnidadFlota(Long id, String estado, boolean activo) {}
 }
