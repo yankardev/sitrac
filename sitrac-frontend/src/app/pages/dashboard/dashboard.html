@@ -2,13 +2,21 @@
   <div>
     <span class="breadcrumb">Operaciones / Dashboard</span>
     <h1>Panel de control</h1>
-    <p>Resumen general de las operaciones de transporte.</p>
+    <p>
+      Resumen general de las operaciones de transporte con información real del sistema.
+      <span *ngIf="actualizadoEn">Actualizado {{ actualizadoEn | date:'HH:mm:ss' }}.</span>
+    </p>
   </div>
 
   <div class="top-actions">
-    <button class="notification" type="button" aria-label="Notificaciones">
-      🔔
-      <span></span>
+    <button
+      class="notification"
+      type="button"
+      aria-label="Actualizar dashboard"
+      title="Actualizar datos"
+      (click)="cargarDashboard()">
+      ↻
+      <span *ngIf="cargando"></span>
     </button>
 
     <a routerLink="/programacion" class="new-operation">
@@ -17,6 +25,14 @@
   </div>
 </header>
 
+<div class="dashboard-message loading-message" *ngIf="cargando">
+  Actualizando información operativa...
+</div>
+
+<div class="dashboard-message warning-message" *ngIf="!cargando && serviciosConError.length">
+  No respondieron: {{ serviciosConError.join(', ') }}. Los demás datos sí se muestran con normalidad.
+</div>
+
 <section class="metrics">
   <article class="metric-card">
     <div class="metric-header">
@@ -24,11 +40,11 @@
       <div class="metric-icon orange">▣</div>
     </div>
 
-    <strong>24</strong>
+    <strong>{{ pedidosActivos }}</strong>
 
     <div class="metric-footer">
-      <span class="positive">↑ 8.5%</span>
-      <p>vs. mes anterior</p>
+      <span class="neutral">En operación</span>
+      <p>sin finalizar ni cancelar</p>
     </div>
   </article>
 
@@ -38,10 +54,10 @@
       <div class="metric-icon blue">➜</div>
     </div>
 
-    <strong>8</strong>
+    <strong>{{ viajesEnCurso }}</strong>
 
     <div class="metric-footer">
-      <span class="neutral">Operando</span>
+      <span class="neutral">EN VIAJE</span>
       <p>en este momento</p>
     </div>
   </article>
@@ -52,11 +68,11 @@
       <div class="metric-icon green">✓</div>
     </div>
 
-    <strong>17</strong>
+    <strong>{{ flotaDisponible }}</strong>
 
     <div class="metric-footer">
-      <span class="positive">68%</span>
-      <p>de la flota</p>
+      <span class="positive">{{ porcentajeDisponible }}%</span>
+      <p>de {{ flotaTotal }} unidades operativas</p>
     </div>
   </article>
 
@@ -66,11 +82,11 @@
       <div class="metric-icon red">⚙</div>
     </div>
 
-    <strong>3</strong>
+    <strong>{{ flotaMantenimiento }}</strong>
 
     <div class="metric-footer">
-      <span class="warning">Revisión</span>
-      <p>pendiente</p>
+      <span class="warning">MANTENIMIENTO</span>
+      <p>estado actual de flota</p>
     </div>
   </article>
 </section>
@@ -99,48 +115,28 @@
         </thead>
 
         <tbody>
-          <tr>
+          <tr *ngFor="let programacion of operacionesRecientes">
             <td>
-              <strong>#PED-0241</strong>
-              <span>Cemento bolsa</span>
+              <strong>#{{ codigoPedido(programacion.pedidoId) }}</strong>
+              <span>{{ tipoCargaPedido(programacion.pedidoId) }}</span>
             </td>
 
-            <td>Pacasmayo → Trujillo</td>
-            <td>Luis Mendoza</td>
-            <td>T4B-782</td>
+            <td>{{ rutaPedido(programacion.pedidoId) }}</td>
+            <td>{{ conductorNombre(programacion.conductorId) }}</td>
+            <td>{{ tractoPlaca(programacion.tractoId) }}</td>
 
             <td>
-              <span class="status in-route">EN VIAJE</span>
-            </td>
-          </tr>
-
-          <tr>
-            <td>
-              <strong>#PED-0240</strong>
-              <span>Cal a granel</span>
-            </td>
-
-            <td>Pacasmayo → Chiclayo</td>
-            <td>José Ramírez</td>
-            <td>T3A-456</td>
-
-            <td>
-              <span class="status programmed">PROGRAMADO</span>
+              <span
+                class="status"
+                [ngClass]="claseEstado(estadoOperacion(programacion))">
+                {{ etiquetaEstado(estadoOperacion(programacion)) }}
+              </span>
             </td>
           </tr>
 
-          <tr>
-            <td>
-              <strong>#PED-0239</strong>
-              <span>Maquinaria</span>
-            </td>
-
-            <td>Trujillo → Lima</td>
-            <td>Carlos Torres</td>
-            <td>T7C-321</td>
-
-            <td>
-              <span class="status completed">FINALIZADO</span>
+          <tr *ngIf="!cargando && operacionesRecientes.length === 0">
+            <td colspan="5" class="empty-row">
+              Aún no hay programaciones registradas.
             </td>
           </tr>
         </tbody>
@@ -152,16 +148,16 @@
     <div class="panel-header">
       <div>
         <h2>Estado de flota</h2>
-        <p>Disponibilidad actual</p>
+        <p>Tractos y semirremolques operativos</p>
       </div>
 
       <a routerLink="/flota" class="panel-link">Ver flota</a>
     </div>
 
     <div class="fleet-chart">
-      <div class="circle-chart">
+      <div class="circle-chart" [style.background]="graficoFlota">
         <div>
-          <strong>25</strong>
+          <strong>{{ flotaTotal }}</strong>
           <span>Unidades</span>
         </div>
       </div>
@@ -170,19 +166,19 @@
         <div>
           <span class="dot green-dot"></span>
           <p>Disponible</p>
-          <strong>17</strong>
+          <strong>{{ flotaDisponible }}</strong>
         </div>
 
         <div>
           <span class="dot orange-dot"></span>
           <p>Asignado</p>
-          <strong>5</strong>
+          <strong>{{ flotaAsignada }}</strong>
         </div>
 
         <div>
           <span class="dot red-dot"></span>
           <p>Mantenimiento</p>
-          <strong>3</strong>
+          <strong>{{ flotaMantenimiento }}</strong>
         </div>
       </div>
     </div>
@@ -237,39 +233,23 @@
     <div class="panel-header">
       <div>
         <h2>Actividad del sistema</h2>
-        <p>Movimientos recientes</p>
+        <p>Movimientos reales más recientes</p>
       </div>
     </div>
 
     <div class="activity">
-      <div class="activity-item">
-        <span class="activity-icon green-bg">✓</span>
+      <div class="activity-item" *ngFor="let item of actividades">
+        <span class="activity-icon" [ngClass]="item.clase">{{ item.icono }}</span>
 
         <div>
-          <strong>Viaje finalizado</strong>
-          <p>PED-0239 llegó a destino.</p>
-          <small>Hace 12 min</small>
+          <strong>{{ item.titulo }}</strong>
+          <p>{{ item.detalle }}</p>
+          <small>{{ item.fecha | date:'dd/MM/yyyy HH:mm' }}</small>
         </div>
       </div>
 
-      <div class="activity-item">
-        <span class="activity-icon orange-bg">+</span>
-
-        <div>
-          <strong>Nueva programación</strong>
-          <p>PED-0240 tiene recursos asignados.</p>
-          <small>Hace 25 min</small>
-        </div>
-      </div>
-
-      <div class="activity-item">
-        <span class="activity-icon blue-bg">◆</span>
-
-        <div>
-          <strong>Abastecimiento registrado</strong>
-          <p>35 galones para la unidad T4B-782.</p>
-          <small>Hace 42 min</small>
-        </div>
+      <div class="activity-empty" *ngIf="!cargando && actividades.length === 0">
+        Todavía no hay actividad operativa para mostrar.
       </div>
     </div>
   </article>
