@@ -1,1 +1,192 @@
-<p>flota works!</p>
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Operaciones / Flota</span>
+    <h1>Gestión de flota</h1>
+    <p>Administra tractos y semirremolques disponibles para la operación.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    <span>+</span>
+    Nueva unidad
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje"><span>✓</span>{{ mensaje }}</div>
+<div class="alert error" *ngIf="error"><span>!</span>{{ error }}</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon navy">▰</div>
+    <div><span>Total unidades</span><strong>{{ totalUnidades }}</strong></div>
+  </article>
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div><span>Disponibles</span><strong>{{ disponibles }}</strong></div>
+  </article>
+  <article class="summary-card">
+    <div class="summary-icon orange">◉</div>
+    <div><span>Asignadas</span><strong>{{ asignadas }}</strong></div>
+  </article>
+  <article class="summary-card">
+    <div class="summary-icon red">⚙</div>
+    <div><span>Mantenimiento</span><strong>{{ mantenimiento }}</strong></div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="tabs">
+    <button type="button" [class.active]="vista === 'TRACTOS'" (click)="cambiarVista('TRACTOS')">
+      Tractos <span>{{ tractos.length }}</span>
+    </button>
+    <button type="button" [class.active]="vista === 'SEMIRREMOLQUES'" (click)="cambiarVista('SEMIRREMOLQUES')">
+      Semirremolques <span>{{ semirremolques.length }}</span>
+    </button>
+  </div>
+
+  <div class="panel-toolbar">
+    <div>
+      <h2>{{ vista === 'TRACTOS' ? 'Tractos registrados' : 'Semirremolques registrados' }}</h2>
+      <p>Estado y disponibilidad actual de la flota</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input type="search" [(ngModel)]="busqueda" placeholder="Buscar por placa, marca o tipo" />
+      </label>
+      <select class="state-filter" [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="DISPONIBLE">Disponible</option>
+        <option value="ASIGNADO">Asignado</option>
+        <option value="MANTENIMIENTO">Mantenimiento</option>
+        <option value="INACTIVO">Inactivo</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando flota...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && vista === 'TRACTOS' && tractosFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Unidad</th><th>Vehículo</th><th>Año</th><th>Capacidad</th><th>Estado</th><th>Activo</th><th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of tractosFiltrados">
+          <td>
+            <div class="unit-cell"><div class="unit-icon">T</div><div><strong>{{ item.placa }}</strong><span>Tracto #{{ item.id }}</span></div></div>
+          </td>
+          <td><strong>{{ item.marca }}</strong><span class="secondary">{{ item.modelo }}</span></td>
+          <td>{{ item.anio }}</td>
+          <td><strong>{{ item.capacidadToneladas | number:'1.0-2' }} TM</strong></td>
+          <td>
+            <select class="inline-state" [ngClass]="item.estado.toLowerCase()" [ngModel]="item.estado" (ngModelChange)="cambiarEstadoTracto(item, $event)">
+              <option value="DISPONIBLE">DISPONIBLE</option>
+              <option value="ASIGNADO">ASIGNADO</option>
+              <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+              <option value="INACTIVO">INACTIVO</option>
+            </select>
+          </td>
+          <td><span class="active-chip" [class.off]="!item.activo">{{ item.activo ? 'ACTIVO' : 'INACTIVO' }}</span></td>
+          <td class="actions-column">
+            <div class="row-actions">
+              <button class="icon-button edit" type="button" title="Editar" (click)="editarTracto(item)">✎</button>
+              <button class="icon-button delete" type="button" title="Eliminar" (click)="eliminarTracto(item)">×</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && vista === 'SEMIRREMOLQUES' && semisFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Unidad</th><th>Tipo</th><th>Capacidad</th><th>Compatibilidad</th><th>Estado</th><th>Activo</th><th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of semisFiltrados">
+          <td>
+            <div class="unit-cell"><div class="unit-icon semi">S</div><div><strong>{{ item.placa }}</strong><span>Semirremolque #{{ item.id }}</span></div></div>
+          </td>
+          <td><strong>{{ etiquetaTipo(item.tipo) }}</strong></td>
+          <td><strong>{{ item.capacidadToneladas | number:'1.0-2' }} TM</strong></td>
+          <td>
+            <span class="secondary" *ngIf="item.tipo === 'BOMBONA'">Cal a granel</span>
+            <span class="secondary" *ngIf="item.tipo === 'PLATAFORMA'">Cemento en bolsa</span>
+            <span class="secondary" *ngIf="item.tipo === 'CAMA_BAJA'">Maquinaria / especial</span>
+            <span class="secondary" *ngIf="item.tipo === 'OTRO'">Según evaluación</span>
+          </td>
+          <td>
+            <select class="inline-state" [ngClass]="item.estado.toLowerCase()" [ngModel]="item.estado" (ngModelChange)="cambiarEstadoSemi(item, $event)">
+              <option value="DISPONIBLE">DISPONIBLE</option>
+              <option value="ASIGNADO">ASIGNADO</option>
+              <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+              <option value="INACTIVO">INACTIVO</option>
+            </select>
+          </td>
+          <td><span class="active-chip" [class.off]="!item.activo">{{ item.activo ? 'ACTIVO' : 'INACTIVO' }}</span></td>
+          <td class="actions-column">
+            <div class="row-actions">
+              <button class="icon-button edit" type="button" title="Editar" (click)="editarSemi(item)">✎</button>
+              <button class="icon-button delete" type="button" title="Eliminar" (click)="eliminarSemi(item)">×</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && ((vista === 'TRACTOS' && tractosFiltrados.length === 0) || (vista === 'SEMIRREMOLQUES' && semisFiltrados.length === 0))">
+    <div class="empty-icon">▰</div>
+    <h3>No hay unidades para mostrar</h3>
+    <p>Registra una unidad o cambia los filtros seleccionados.</p>
+    <button type="button" (click)="abrirNuevo()">+ Registrar unidad</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ editandoId === null ? 'NUEVA UNIDAD' : 'EDITAR UNIDAD' }}</span>
+        <h2>{{ vista === 'TRACTOS' ? (editandoId === null ? 'Registrar tracto' : 'Actualizar tracto') : (editandoId === null ? 'Registrar semirremolque' : 'Actualizar semirremolque') }}</h2>
+        <p>Completa la información técnica y operativa.</p>
+      </div>
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #unidadForm="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid" *ngIf="vista === 'TRACTOS'">
+        <label class="field"><span>Placa *</span><input name="placaT" [(ngModel)]="tractoForm.placa" maxlength="12" placeholder="T4B-782" required /></label>
+        <label class="field"><span>Año *</span><input name="anio" type="number" [(ngModel)]="tractoForm.anio" min="1980" max="2100" required /></label>
+        <label class="field"><span>Marca *</span><input name="marca" [(ngModel)]="tractoForm.marca" placeholder="Volvo" required /></label>
+        <label class="field"><span>Modelo *</span><input name="modelo" [(ngModel)]="tractoForm.modelo" placeholder="FH" required /></label>
+        <label class="field"><span>Capacidad TM *</span><input name="capacidadT" type="number" [(ngModel)]="tractoForm.capacidadToneladas" min="0.01" step="0.01" required /></label>
+        <label class="field"><span>Estado</span><select name="estadoT" [(ngModel)]="tractoForm.estado"><option value="DISPONIBLE">Disponible</option><option value="ASIGNADO">Asignado</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="INACTIVO">Inactivo</option></select></label>
+        <label class="switch-field full" *ngIf="editandoId !== null"><div><strong>Unidad activa</strong><span>Permite utilizar el tracto en operaciones.</span></div><input name="activoT" type="checkbox" [(ngModel)]="tractoForm.activo" /></label>
+      </div>
+
+      <div class="form-grid" *ngIf="vista === 'SEMIRREMOLQUES'">
+        <label class="field"><span>Placa *</span><input name="placaS" [(ngModel)]="semiForm.placa" maxlength="12" placeholder="SRP-782" required /></label>
+        <label class="field"><span>Tipo *</span><select name="tipo" [(ngModel)]="semiForm.tipo" required><option value="BOMBONA">Bombona</option><option value="PLATAFORMA">Plataforma</option><option value="CAMA_BAJA">Cama baja</option><option value="OTRO">Otro</option></select></label>
+        <label class="field"><span>Capacidad TM *</span><input name="capacidadS" type="number" [(ngModel)]="semiForm.capacidadToneladas" min="0.01" step="0.01" required /></label>
+        <label class="field"><span>Estado</span><select name="estadoS" [(ngModel)]="semiForm.estado"><option value="DISPONIBLE">Disponible</option><option value="ASIGNADO">Asignado</option><option value="MANTENIMIENTO">Mantenimiento</option><option value="INACTIVO">Inactivo</option></select></label>
+        <div class="compatibility full"><strong>Regla operativa</strong><p>Bombona → cal a granel · Plataforma → cemento en bolsa · Cama baja → maquinaria y carga especial.</p></div>
+        <label class="switch-field full" *ngIf="editandoId !== null"><div><strong>Unidad activa</strong><span>Permite utilizar el semirremolque en operaciones.</span></div><input name="activoS" type="checkbox" [(ngModel)]="semiForm.activo" /></label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" [disabled]="guardando" (click)="cerrarFormulario()">Cancelar</button>
+        <button class="primary-button" type="submit" [disabled]="unidadForm.invalid || guardando">{{ guardando ? 'Guardando...' : 'Guardar unidad' }}</button>
+      </div>
+    </form>
+  </section>
+</div>
