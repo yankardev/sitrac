@@ -1,1 +1,322 @@
-<p>conductores works!</p>
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Operaciones / Conductores</span>
+    <h1>Gestión de conductores</h1>
+    <p>Administra conductores, licencias y disponibilidad operativa.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    <span>+</span>
+    Nuevo conductor
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">♙</div>
+    <div>
+      <span>Total activos</span>
+      <strong>{{ totalActivos }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Disponibles</span>
+      <strong>{{ totalDisponibles }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">➜</div>
+    <div>
+      <span>No disponibles</span>
+      <strong>{{ totalOcupados }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Personal de conducción</h2>
+      <p>Conductores registrados para las operaciones de transporte</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar por nombre, DNI o licencia"
+        />
+      </label>
+
+      <select class="state-filter" [(ngModel)]="filtroDisponibilidad">
+        <option value="TODOS">Todos</option>
+        <option value="DISPONIBLE">Disponibles</option>
+        <option value="OCUPADO">No disponibles</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando conductores...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && conductoresFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Conductor</th>
+          <th>DNI</th>
+          <th>Licencia</th>
+          <th>Vencimiento</th>
+          <th>Teléfono</th>
+          <th>Disponibilidad</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let conductor of conductoresFiltrados">
+          <td>
+            <div class="driver-cell">
+              <div class="driver-avatar">
+                {{ conductor.nombres.charAt(0).toUpperCase() }}{{ conductor.apellidos.charAt(0).toUpperCase() }}
+              </div>
+
+              <div>
+                <strong>{{ nombreCompleto(conductor) }}</strong>
+                <span>Conductor #{{ conductor.id }}</span>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            <strong class="document-number">{{ conductor.dni }}</strong>
+          </td>
+
+          <td>
+            <strong class="license-number">{{ conductor.numeroLicencia }}</strong>
+            <span class="secondary">Categoría {{ conductor.categoriaLicencia }}</span>
+          </td>
+
+          <td>
+            <span>{{ conductor.fechaVencimientoLicencia | date:'dd/MM/yyyy':'UTC' }}</span>
+            <span class="license-status" [ngClass]="claseLicencia(conductor)">
+              {{ estadoLicencia(conductor) }}
+            </span>
+          </td>
+
+          <td>{{ conductor.telefono || 'Sin teléfono' }}</td>
+
+          <td>
+            <button
+              type="button"
+              class="availability"
+              [class.available]="conductor.disponible && conductor.activo"
+              [class.busy]="!conductor.disponible && conductor.activo"
+              [class.disabled]="!conductor.activo"
+              [disabled]="!conductor.activo"
+              (click)="cambiarDisponibilidad(conductor)">
+              <i></i>
+              {{ !conductor.activo ? 'INACTIVO' : (conductor.disponible ? 'DISPONIBLE' : 'NO DISPONIBLE') }}
+            </button>
+          </td>
+
+          <td>
+            <span class="status" [class.active]="conductor.activo" [class.inactive]="!conductor.activo">
+              <i></i>
+              {{ conductor.activo ? 'ACTIVO' : 'INACTIVO' }}
+            </span>
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <button
+                class="icon-button edit"
+                type="button"
+                title="Editar conductor"
+                (click)="editar(conductor)">
+                ✎
+              </button>
+
+              <button
+                class="icon-button delete"
+                type="button"
+                title="Eliminar conductor"
+                (click)="eliminar(conductor)">
+                ×
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && conductoresFiltrados.length === 0">
+    <div class="empty-icon">♙</div>
+    <h3>No hay conductores para mostrar</h3>
+    <p *ngIf="busqueda || filtroDisponibilidad !== 'TODOS'">
+      No encontramos resultados con los filtros seleccionados.
+    </p>
+    <p *ngIf="!busqueda && filtroDisponibilidad === 'TODOS'">
+      Registra el primer conductor para comenzar.
+    </p>
+    <button type="button" (click)="abrirNuevo()">+ Registrar conductor</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ conductorEditandoId === null ? 'NUEVO REGISTRO' : 'EDITAR REGISTRO' }}</span>
+        <h2>{{ conductorEditandoId === null ? 'Registrar conductor' : 'Actualizar conductor' }}</h2>
+        <p>Completa la información personal y de licencia.</p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #conductorForm="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <label class="field">
+          <span>DNI *</span>
+          <input
+            name="dni"
+            type="text"
+            [(ngModel)]="formulario.dni"
+            pattern="[0-9]{8}"
+            minlength="8"
+            maxlength="8"
+            placeholder="12345678"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Teléfono</span>
+          <input
+            name="telefono"
+            type="text"
+            [(ngModel)]="formulario.telefono"
+            maxlength="30"
+            placeholder="944 123 456"
+          />
+        </label>
+
+        <label class="field">
+          <span>Nombres *</span>
+          <input
+            name="nombres"
+            type="text"
+            [(ngModel)]="formulario.nombres"
+            minlength="2"
+            maxlength="100"
+            placeholder="Nombres"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Apellidos *</span>
+          <input
+            name="apellidos"
+            type="text"
+            [(ngModel)]="formulario.apellidos"
+            minlength="2"
+            maxlength="100"
+            placeholder="Apellidos"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Número de licencia *</span>
+          <input
+            name="numeroLicencia"
+            type="text"
+            [(ngModel)]="formulario.numeroLicencia"
+            maxlength="20"
+            placeholder="Q12345678"
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Categoría *</span>
+          <input
+            name="categoriaLicencia"
+            type="text"
+            [(ngModel)]="formulario.categoriaLicencia"
+            maxlength="20"
+            placeholder="AIIIC"
+            required
+          />
+        </label>
+
+        <label class="field full">
+          <span>Vencimiento de licencia *</span>
+          <input
+            name="fechaVencimientoLicencia"
+            type="date"
+            [(ngModel)]="formulario.fechaVencimientoLicencia"
+            required
+          />
+        </label>
+
+        <div class="switch-grid full" *ngIf="conductorEditandoId !== null">
+          <label class="switch-field">
+            <div>
+              <strong>Conductor activo</strong>
+              <span>Permite utilizarlo en nuevas programaciones.</span>
+            </div>
+            <input name="activo" type="checkbox" [(ngModel)]="formulario.activo" />
+          </label>
+
+          <label class="switch-field">
+            <div>
+              <strong>Disponible</strong>
+              <span>Indica si puede ser asignado a una operación.</span>
+            </div>
+            <input name="disponible" type="checkbox" [(ngModel)]="formulario.disponible" />
+          </label>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <button
+          class="secondary-button"
+          type="button"
+          [disabled]="guardando"
+          (click)="cerrarFormulario()">
+          Cancelar
+        </button>
+
+        <button
+          class="primary-button"
+          type="submit"
+          [disabled]="conductorForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (conductorEditandoId === null ? 'Registrar conductor' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
