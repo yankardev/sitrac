@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -69,17 +70,21 @@ public class ProgramacionService implements ProgramacionUseCase {
         Programacion actual = obtenerPorId(id);
         EstadoProgramacion nuevoEstado = p.getEstado() == null ? actual.getEstado() : p.getEstado();
 
-        if (nuevoEstado == EstadoProgramacion.PROGRAMADA) {
-            validarDisponibilidadLocal(p, id);
-            validarIntegracion(p, false);
+        validarAsignacionInmutable(actual, p);
+
+        if (actual.getEstado() == EstadoProgramacion.CANCELADA
+                && nuevoEstado != EstadoProgramacion.CANCELADA) {
+            throw new ReglaNegocioException(
+                    "Una programación cancelada no puede volver a activarse; registre una nueva programación"
+            );
         }
 
         Programacion actualizada = repo.guardar(Programacion.builder()
                 .id(actual.getId())
-                .pedidoId(p.getPedidoId())
-                .conductorId(p.getConductorId())
-                .tractoId(p.getTractoId())
-                .semirremolqueId(p.getSemirremolqueId())
+                .pedidoId(actual.getPedidoId())
+                .conductorId(actual.getConductorId())
+                .tractoId(actual.getTractoId())
+                .semirremolqueId(actual.getSemirremolqueId())
                 .fechaProgramada(p.getFechaProgramada())
                 .observacion(p.getObservacion())
                 .estado(nuevoEstado)
@@ -98,8 +103,28 @@ public class ProgramacionService implements ProgramacionUseCase {
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Programacion actual = obtenerPorId(id);
+
+        if (actual.getEstado() == EstadoProgramacion.PROGRAMADA) {
+            throw new ReglaNegocioException(
+                    "No se puede eliminar una programación activa; primero debe cancelarla"
+            );
+        }
+
         repo.eliminarPorId(id);
+    }
+
+    private void validarAsignacionInmutable(Programacion actual, Programacion nueva) {
+        boolean cambioAsignacion = !Objects.equals(actual.getPedidoId(), nueva.getPedidoId())
+                || !Objects.equals(actual.getConductorId(), nueva.getConductorId())
+                || !Objects.equals(actual.getTractoId(), nueva.getTractoId())
+                || !Objects.equals(actual.getSemirremolqueId(), nueva.getSemirremolqueId());
+
+        if (cambioAsignacion) {
+            throw new ReglaNegocioException(
+                    "No se pueden cambiar los recursos de una programación existente; cancélela y registre una nueva"
+            );
+        }
     }
 
     private void validarDisponibilidadLocal(Programacion p, Long programacionIdActual) {
