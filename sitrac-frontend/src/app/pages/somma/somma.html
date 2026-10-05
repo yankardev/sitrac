@@ -1,1 +1,313 @@
-<p>somma works!</p>
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Seguridad / SOMMA</span>
+    <h1>Seguridad, salud y medio ambiente</h1>
+    <p>Gestiona charlas, capacitaciones, inspecciones e incidentes asociados a la operación.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo('CHARLA')">
+    <span>+</span>
+    Nuevo registro
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">✓</div>
+    <div>
+      <span>Charlas</span>
+      <strong>{{ totalCharlas }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">▣</div>
+    <div>
+      <span>Capacitaciones</span>
+      <strong>{{ totalCapacitaciones }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon red">!</div>
+    <div>
+      <span>Accidentes / incidentes</span>
+      <strong>{{ totalEventos }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">●</div>
+    <div>
+      <span>Registros abiertos</span>
+      <strong>{{ totalAbiertos }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="quick-actions">
+  <button type="button" (click)="abrirNuevo('CHARLA')">+ Charla</button>
+  <button type="button" (click)="abrirNuevo('CAPACITACION')">+ Capacitación</button>
+  <button type="button" (click)="abrirNuevo('INSPECCION')">+ Inspección</button>
+  <button type="button" class="danger-outline" (click)="abrirNuevo('INCIDENTE')">+ Incidente</button>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Registros SOMMA</h2>
+      <p>Control operativo de seguridad y prevención</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input type="search" [(ngModel)]="busqueda" placeholder="Buscar título, conductor o lugar" />
+      </label>
+
+      <select [(ngModel)]="filtroTipo">
+        <option value="TODOS">Todos los tipos</option>
+        <option value="CHARLA">Charlas</option>
+        <option value="CAPACITACION">Capacitaciones</option>
+        <option value="ACCIDENTE">Accidentes</option>
+        <option value="INCIDENTE">Incidentes</option>
+        <option value="INSPECCION">Inspecciones</option>
+      </select>
+
+      <select [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="REGISTRADO">Registrado</option>
+        <option value="CERRADO">Cerrado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando registros SOMMA...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && registrosFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Registro</th>
+          <th>Tipo</th>
+          <th>Fecha</th>
+          <th>Conductor</th>
+          <th>Programación</th>
+          <th>Lugar</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let registro of registrosFiltrados">
+          <td>
+            <strong class="record-title">{{ registro.titulo }}</strong>
+            <span class="secondary">#SOMMA-{{ codigo(registro.id) }}</span>
+          </td>
+
+          <td>
+            <span class="type-badge" [ngClass]="claseTipo(registro.tipo)">
+              {{ etiquetaTipo(registro.tipo) }}
+            </span>
+          </td>
+
+          <td>{{ registro.fecha | date:'dd/MM/yyyy HH:mm' }}</td>
+
+          <td>
+            <span>{{ conductorNombre(registro.conductorId) }}</span>
+          </td>
+
+          <td>
+            <span *ngIf="registro.programacionId !== null">#PROG-{{ codigo(registro.programacionId) }}</span>
+            <span *ngIf="registro.programacionId === null" class="secondary">No asociada</span>
+          </td>
+
+          <td>{{ registro.lugar || 'Sin lugar registrado' }}</td>
+
+          <td>
+            <span class="status" [ngClass]="registro.estado.toLowerCase()">
+              <i></i>
+              {{ etiquetaEstado(registro.estado) }}
+            </span>
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <button
+                *ngIf="registro.estado === 'REGISTRADO'"
+                type="button"
+                class="icon-button close"
+                title="Cerrar registro"
+                (click)="cambiarEstado(registro, 'CERRADO')">
+                ✓
+              </button>
+
+              <button
+                *ngIf="registro.estado === 'REGISTRADO'"
+                type="button"
+                class="icon-button cancel"
+                title="Cancelar registro"
+                (click)="cambiarEstado(registro, 'CANCELADO')">
+                –
+              </button>
+
+              <button type="button" class="icon-button edit" title="Editar" (click)="editar(registro)">
+                ✎
+              </button>
+
+              <button type="button" class="icon-button delete" title="Eliminar" (click)="eliminar(registro)">
+                ×
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && registrosFiltrados.length === 0">
+    <div class="empty-icon">✓</div>
+    <h3>No hay registros SOMMA para mostrar</h3>
+    <p>Registra una charla, capacitación, inspección o evento de seguridad.</p>
+    <button type="button" (click)="abrirNuevo('CHARLA')">+ Crear registro</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ registroEditandoId === null ? 'NUEVO REGISTRO SOMMA' : 'EDITAR REGISTRO SOMMA' }}</span>
+        <h2>{{ registroEditandoId === null ? 'Registrar actividad de seguridad' : 'Actualizar registro' }}</h2>
+        <p>Documenta acciones preventivas y eventos asociados a la operación.</p>
+      </div>
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #sommaForm="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Tipo de registro *</span>
+          <select name="tipo" [(ngModel)]="formulario.tipo" (ngModelChange)="alCambiarTipo()" required>
+            <option value="CHARLA">Charla de seguridad</option>
+            <option value="CAPACITACION">Capacitación</option>
+            <option value="ACCIDENTE">Accidente</option>
+            <option value="INCIDENTE">Incidente</option>
+            <option value="INSPECCION">Inspección</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Fecha y hora *</span>
+          <input name="fecha" type="datetime-local" [(ngModel)]="formulario.fecha" required />
+        </label>
+
+        <label class="field full" *ngIf="formulario.tipo === 'CHARLA'">
+          <span>Programación asociada *</span>
+          <select
+            name="programacionId"
+            [(ngModel)]="formulario.programacionId"
+            (ngModelChange)="alCambiarProgramacion()"
+            required>
+            <option [ngValue]="null" disabled>Selecciona una programación activa</option>
+            <option *ngFor="let programacion of programacionesActivas" [ngValue]="programacion.id">
+              #PROG-{{ codigo(programacion.id) }} · {{ conductorNombre(programacion.conductorId) }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field" *ngIf="formulario.tipo !== 'CHARLA'">
+          <span>Programación asociada</span>
+          <select
+            name="programacionOpcional"
+            [(ngModel)]="formulario.programacionId"
+            (ngModelChange)="alCambiarProgramacion()">
+            <option [ngValue]="null">Sin programación</option>
+            <option *ngFor="let programacion of programaciones" [ngValue]="programacion.id">
+              #PROG-{{ codigo(programacion.id) }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field" [class.full]="formulario.tipo === 'CHARLA'">
+          <span>Conductor {{ formulario.tipo === 'CHARLA' ? '*' : '' }}</span>
+          <select
+            name="conductorId"
+            [(ngModel)]="formulario.conductorId"
+            [disabled]="formulario.tipo === 'CHARLA'"
+            [required]="formulario.tipo === 'CHARLA'">
+            <option [ngValue]="null">Sin conductor</option>
+            <option *ngFor="let conductor of conductores" [ngValue]="conductor.id">
+              {{ conductor.nombres }} {{ conductor.apellidos }} · {{ conductor.dni }}
+            </option>
+          </select>
+          <small *ngIf="formulario.tipo === 'CHARLA'">
+            El conductor se toma automáticamente de la programación.
+          </small>
+        </label>
+
+        <label class="field full">
+          <span>Título *</span>
+          <input
+            name="titulo"
+            type="text"
+            [(ngModel)]="formulario.titulo"
+            maxlength="150"
+            placeholder="Ej. Charla de manejo defensivo"
+            required />
+        </label>
+
+        <label class="field full">
+          <span>Descripción *</span>
+          <textarea
+            name="descripcion"
+            [(ngModel)]="formulario.descripcion"
+            maxlength="1000"
+            rows="5"
+            placeholder="Detalle de la actividad, hallazgo o evento"
+            required></textarea>
+        </label>
+
+        <label class="field full">
+          <span>Lugar</span>
+          <input
+            name="lugar"
+            type="text"
+            [(ngModel)]="formulario.lugar"
+            maxlength="150"
+            placeholder="Ej. Base Trujillo / Patio de operaciones" />
+        </label>
+
+        <div class="state-readonly full" *ngIf="registroEditandoId !== null">
+          <span>Estado actual</span>
+          <strong>{{ formulario.estado || 'REGISTRADO' }}</strong>
+          <p>Utiliza las acciones de la tabla para cerrar o cancelar el registro.</p>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <button type="button" class="secondary-button" [disabled]="guardando" (click)="cerrarFormulario()">
+          Cancelar
+        </button>
+        <button type="submit" class="primary-button" [disabled]="sommaForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (registroEditandoId === null ? 'Registrar' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
