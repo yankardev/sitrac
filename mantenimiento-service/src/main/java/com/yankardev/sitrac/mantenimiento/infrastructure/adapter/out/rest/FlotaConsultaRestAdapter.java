@@ -42,5 +42,23 @@ public class FlotaConsultaRestAdapter implements FlotaConsultaPort {
         }
     }
 
+    @Override
+    public void cambiarEstadoUnidad(TipoUnidad tipoUnidad, Long unidadId, String estado) {
+        String endpoint = tipoUnidad == TipoUnidad.TRACTO
+                ? "/api/tractos/{id}/estado"
+                : "/api/semirremolques/{id}/estado";
+
+        try {
+            flotaClient.put()
+                    .uri(endpoint, unidadId)
+                    .body(new EstadoUnidadRequest(estado))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException("No se pudo actualizar el estado de la unidad en flota-service");
+        }
+    }
+
     private record UnidadResponse(Long id, String estado, boolean activo) {}
+    private record EstadoUnidadRequest(String estado) {}
 }
