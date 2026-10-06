@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 
@@ -43,6 +43,7 @@ export class Dashboard implements OnInit {
   private readonly clienteService = inject(ClienteService);
   private readonly mantenimientoService = inject(MantenimientoService);
   private readonly sommaService = inject(SommaService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   pedidos: Pedido[] = [];
   programaciones: ProgramacionModel[] = [];
@@ -180,9 +181,11 @@ export class Dashboard implements OnInit {
         this.actividades = this.generarActividad();
         this.actualizadoEn = new Date();
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
