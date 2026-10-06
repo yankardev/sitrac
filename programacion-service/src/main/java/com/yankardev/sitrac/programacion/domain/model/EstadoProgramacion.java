@@ -1,1 +1,7 @@
-package com.yankardev.sitrac.programacion.domain.model; public enum EstadoProgramacion{PROGRAMADA,CANCELADA}
+package com.yankardev.sitrac.programacion.domain.model;
+
+public enum EstadoProgramacion {
+    PROGRAMADA,
+    FINALIZADA,
+    CANCELADA
+}
