@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 import {
   AbastecimientoCombustible,
@@ -17,6 +17,7 @@ import { Viaje } from '../../core/models/viaje.model';
 import { CombustibleService } from '../../core/services/combustible.service';
 import { ProgramacionService } from '../../core/services/programacion.service';
 import { ViajeService } from '../../core/services/viaje.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-combustible',
@@ -28,6 +29,24 @@ export class Combustible implements OnInit {
   private readonly combustibleService = inject(CombustibleService);
   private readonly programacionService = inject(ProgramacionService);
   private readonly viajeService = inject(ViajeService);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  readonly tanquesBase: string[] = [
+    'Tanque Base Trujillo 01',
+    'Tanque Base Lima 01',
+    'Tanque Base Cajamarca 01',
+    'Tanque Base Pacasmayo 01',
+    'Tanque Base Chiclayo 01',
+    'Tanque Base Piura 01',
+    'Tanque Base Chimbote 01'
+  ];
+
+  readonly proveedoresCombustible: string[] = [
+    'Primax',
+    'Repsol',
+    'Petroperú',
+    'Pecsa'
+  ];
 
   abastecimientos: AbastecimientoCombustible[] = [];
   programaciones: ProgramacionModel[] = [];
@@ -104,32 +123,30 @@ export class Combustible implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
+    const primeraCarga = this.abastecimientos.length === 0;
+    if (primeraCarga) {
+      this.cargando = true;
+    }
+
     this.error = '';
 
-    forkJoin({
-      abastecimientos: this.combustibleService.listar(),
-      programaciones: this.programacionService.listar(),
-      conductores: this.programacionService.listarConductores(),
-      tractos: this.programacionService.listarTractos(),
-      viajes: this.viajeService.listar()
-    }).subscribe({
-      next: data => {
-        this.abastecimientos = [...data.abastecimientos].sort((a, b) => b.id - a.id);
-        this.programaciones = data.programaciones;
-        this.conductores = data.conductores;
-        this.tractos = data.tractos;
-        this.viajes = data.viajes;
+    this.combustibleService.listar().subscribe({
+      next: abastecimientos => {
+        this.abastecimientos = [...abastecimientos].sort((a, b) => b.id - a.id);
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(
           error,
-          'No se pudo cargar Combustible. Verifica combustible-service, programacion-service, conductor-service, flota-service y viaje-service.'
+          'No se pudo cargar Combustible. Verifica combustible-service.'
         );
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
+
+    this.cargarCatalogosEnSegundoPlano();
   }
 
   abrirNuevo(): void {
@@ -205,7 +222,7 @@ export class Combustible implements OnInit {
     }
 
     if (this.formulario.tipoAbastecimiento === 'INTERNO' && !this.formulario.tanqueOrigen.trim()) {
-      this.error = 'Indica el tanque de origen para el abastecimiento interno.';
+      this.error = 'Selecciona el tanque de origen para el abastecimiento interno.';
       return;
     }
 
@@ -213,7 +230,7 @@ export class Combustible implements OnInit {
       this.formulario.tipoAbastecimiento === 'TERCERO' &&
       (!this.formulario.proveedor.trim() || !this.formulario.numeroComprobante.trim())
     ) {
-      this.error = 'Para compra a tercero indica proveedor y número de comprobante.';
+      this.error = 'Para compra a tercero selecciona proveedor e indica número de comprobante.';
       return;
     }
 
@@ -221,6 +238,7 @@ export class Combustible implements OnInit {
     this.error = '';
     this.mensaje = '';
 
+    const esNuevo = this.abastecimientoEditandoId === null;
     const payload: AbastecimientoForm = {
       programacionId: Number(this.formulario.programacionId),
       viajeId: this.formulario.viajeId === null ? null : Number(this.formulario.viajeId),
@@ -239,31 +257,38 @@ export class Combustible implements OnInit {
       observacion: this.formulario.observacion.trim()
     };
 
-    const operacion = this.abastecimientoEditandoId === null
+    const operacion = esNuevo
       ? this.combustibleService.crear(payload)
-      : this.combustibleService.actualizar(this.abastecimientoEditandoId, payload);
+      : this.combustibleService.actualizar(this.abastecimientoEditandoId!, payload);
 
-    operacion.subscribe({
-      next: item => {
-        this.mensaje = this.abastecimientoEditandoId === null
-          ? `Abastecimiento #AB-${this.codigo(item.id)} registrado correctamente.`
-          : `Abastecimiento #AB-${this.codigo(item.id)} actualizado correctamente.`;
-        this.guardando = false;
-        this.mostrarFormulario = false;
-        this.abastecimientoEditandoId = null;
-        this.formulario = this.formularioVacio();
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo guardar el abastecimiento.');
-        this.guardando = false;
-      }
-    });
+    operacion
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: item => {
+          this.mensaje = esNuevo
+            ? `Abastecimiento #AB-${this.codigo(item.id)} registrado correctamente.`
+            : `Abastecimiento #AB-${this.codigo(item.id)} actualizado correctamente.`;
+          this.aplicarLocal(item);
+          this.mostrarFormulario = false;
+          this.abastecimientoEditandoId = null;
+          this.formulario = this.formularioVacio();
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo guardar el abastecimiento.');
+        }
+      });
   }
 
   eliminar(item: AbastecimientoCombustible): void {
-    const confirmado = window.confirm(
-      `¿Eliminar el abastecimiento #AB-${this.codigo(item.id)}?`
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar el abastecimiento #AB-${this.codigo(item.id)}.`,
+      'CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente este abastecimiento?'
     );
 
     if (!confirmado) {
@@ -275,8 +300,9 @@ export class Combustible implements OnInit {
 
     this.combustibleService.eliminar(item.id).subscribe({
       next: () => {
+        this.abastecimientos = this.abastecimientos.filter(x => x.id !== item.id);
         this.mensaje = 'Abastecimiento eliminado correctamente.';
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el abastecimiento.');
@@ -303,6 +329,33 @@ export class Combustible implements OnInit {
 
   tipoEtiqueta(tipo: TipoAbastecimiento): string {
     return tipo === 'INTERNO' ? 'Interno' : 'Tercero';
+  }
+
+  private cargarCatalogosEnSegundoPlano(): void {
+    forkJoin({
+      programaciones: this.programacionService.listar(),
+      conductores: this.programacionService.listarConductores(),
+      tractos: this.programacionService.listarTractos(),
+      viajes: this.viajeService.listar()
+    }).subscribe({
+      next: data => {
+        this.programaciones = data.programaciones;
+        this.conductores = data.conductores;
+        this.tractos = data.tractos;
+        this.viajes = data.viajes;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // La lista principal ya está visible; los catálogos se reintentan al volver a entrar.
+      }
+    });
+  }
+
+  private aplicarLocal(item: AbastecimientoCombustible): void {
+    const existe = this.abastecimientos.some(x => x.id === item.id);
+    this.abastecimientos = existe
+      ? this.abastecimientos.map(x => x.id === item.id ? item : x)
+      : [item, ...this.abastecimientos];
   }
 
   private formularioVacio(): AbastecimientoForm {
