@@ -20,51 +20,63 @@
         <span>Dashboard</span>
       </a>
 
-      <a routerLink="/clientes" routerLinkActive="active" class="menu-item">
-        <span class="icon">▣</span>
-        <span>Clientes</span>
-      </a>
+      <ng-container *ngIf="puedeAcceder('ADMIN', 'OPERADOR')">
+        <a routerLink="/clientes" routerLinkActive="active" class="menu-item">
+          <span class="icon">▣</span>
+          <span>Clientes</span>
+        </a>
 
-      <a routerLink="/pedidos" routerLinkActive="active" class="menu-item">
-        <span class="icon">◫</span>
-        <span>Pedidos</span>
-      </a>
+        <a routerLink="/pedidos" routerLinkActive="active" class="menu-item">
+          <span class="icon">◫</span>
+          <span>Pedidos</span>
+        </a>
 
-      <a routerLink="/programacion" routerLinkActive="active" class="menu-item">
-        <span class="icon">◉</span>
-        <span>Programación</span>
-      </a>
+        <a routerLink="/programacion" routerLinkActive="active" class="menu-item">
+          <span class="icon">◉</span>
+          <span>Programación</span>
+        </a>
 
-      <div class="menu-label">OPERACIONES</div>
+        <div class="menu-label">OPERACIONES</div>
 
-      <a routerLink="/conductores" routerLinkActive="active" class="menu-item">
-        <span class="icon">♙</span>
-        <span>Conductores</span>
-      </a>
+        <a routerLink="/conductores" routerLinkActive="active" class="menu-item">
+          <span class="icon">♙</span>
+          <span>Conductores</span>
+        </a>
 
-      <a routerLink="/flota" routerLinkActive="active" class="menu-item">
-        <span class="icon">▰</span>
-        <span>Flota</span>
-      </a>
+        <a routerLink="/flota" routerLinkActive="active" class="menu-item">
+          <span class="icon">▰</span>
+          <span>Flota</span>
+        </a>
 
-      <a routerLink="/viajes" routerLinkActive="active" class="menu-item">
-        <span class="icon">➜</span>
-        <span>Viajes</span>
-      </a>
+        <a routerLink="/viajes" routerLinkActive="active" class="menu-item">
+          <span class="icon">➜</span>
+          <span>Viajes</span>
+        </a>
 
-      <a routerLink="/combustible" routerLinkActive="active" class="menu-item">
-        <span class="icon">◆</span>
-        <span>Combustible</span>
-      </a>
+        <a routerLink="/combustible" routerLinkActive="active" class="menu-item">
+          <span class="icon">◆</span>
+          <span>Combustible</span>
+        </a>
+      </ng-container>
 
-      <div class="menu-label">CONTROL</div>
+      <ng-container *ngIf="puedeAcceder('ADMIN', 'SOMMA') || puedeAcceder('ADMIN')">
+        <div class="menu-label">CONTROL</div>
+      </ng-container>
 
-      <a routerLink="/mantenimiento" routerLinkActive="active" class="menu-item">
+      <a
+        *ngIf="puedeAcceder('ADMIN')"
+        routerLink="/mantenimiento"
+        routerLinkActive="active"
+        class="menu-item">
         <span class="icon">⚙</span>
         <span>Mantenimiento</span>
       </a>
 
-      <a routerLink="/somma" routerLinkActive="active" class="menu-item">
+      <a
+        *ngIf="puedeAcceder('ADMIN', 'SOMMA')"
+        routerLink="/somma"
+        routerLinkActive="active"
+        class="menu-item">
         <span class="icon">✓</span>
         <span>SOMMA</span>
       </a>
