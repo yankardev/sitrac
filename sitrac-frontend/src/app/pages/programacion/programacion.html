@@ -68,7 +68,7 @@
         <input
           type="search"
           [(ngModel)]="busqueda"
-          placeholder="Buscar pedido, conductor o placa"
+          placeholder="Buscar pedido, cliente, conductor o placa"
         />
       </label>
 
@@ -109,9 +109,11 @@
 
           <td>
             <strong>#{{ codigoPedido(programacion.pedidoId) }}</strong>
-            <span class="secondary">
-              {{ pedidoPorId(programacion.pedidoId)?.origen || 'Origen' }} →
-              {{ pedidoPorId(programacion.pedidoId)?.destino || 'Destino' }}
+            <span class="secondary" *ngIf="pedidoPorId(programacion.pedidoId) as pedido">
+              {{ nombreCliente(pedido.clienteId) }}
+            </span>
+            <span class="secondary" *ngIf="pedidoPorId(programacion.pedidoId) as pedido">
+              {{ pedido.origen }} → {{ pedido.destino }} · {{ pedido.toneladas }} TM
             </span>
           </td>
 
@@ -212,7 +214,7 @@
             required>
             <option [ngValue]="null" disabled>Selecciona un pedido registrado</option>
             <option *ngFor="let pedido of pedidosDisponibles" [ngValue]="pedido.id">
-              #{{ codigoPedido(pedido.id) }} · {{ pedido.origen }} → {{ pedido.destino }} · {{ pedido.toneladas }} TM
+              #{{ codigoPedido(pedido.id) }} · {{ nombreCliente(pedido.clienteId) }} · {{ pedido.origen }} → {{ pedido.destino }} · {{ pedido.toneladas }} TM
             </option>
             <option
               *ngIf="programacionEditandoId !== null && formulario.pedidoId !== null"
@@ -224,8 +226,12 @@
 
         <div class="cargo-rule full" *ngIf="pedidoSeleccionado() as pedido">
           <div>
-            <span>Tipo de carga</span>
-            <strong>{{ pedido.tipoCarga.replaceAll('_', ' ') }}</strong>
+            <span>Cliente</span>
+            <strong>{{ nombreCliente(pedido.clienteId) }}</strong>
+          </div>
+          <div>
+            <span>Ruta</span>
+            <strong>{{ pedido.origen }} → {{ pedido.destino }}</strong>
           </div>
           <div>
             <span>Tonelaje</span>
@@ -263,7 +269,7 @@
             [(ngModel)]="formulario.tractoId"
             [disabled]="programacionEditandoId !== null"
             required>
-            <option [ngValue]="null" disabled>Selecciona tracto</option>
+            <option [ngValue]="null" disabled>Selecciona tracto disponible</option>
             <option *ngFor="let tracto of tractosDisponibles" [ngValue]="tracto.id">
               {{ tracto.placa }} · {{ tracto.marca }} {{ tracto.modelo }} · {{ tracto.capacidadToneladas }} TM
             </option>
@@ -282,7 +288,7 @@
             [(ngModel)]="formulario.semirremolqueId"
             [disabled]="programacionEditandoId !== null"
             required>
-            <option [ngValue]="null" disabled>Selecciona semirremolque</option>
+            <option [ngValue]="null" disabled>Selecciona semirremolque disponible</option>
             <option *ngFor="let semi of semirremolquesDisponibles" [ngValue]="semi.id">
               {{ semi.placa }} · {{ etiquetaTipoSemirremolque(semi.tipo) }} · {{ semi.capacidadToneladas }} TM
             </option>
