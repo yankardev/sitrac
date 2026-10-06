@@ -20,7 +20,7 @@
         <span>Dashboard</span>
       </a>
 
-      <ng-container *ngIf="puedeAcceder('ADMIN', 'OPERADOR')">
+      <ng-container *ngIf="puedeAcceder('ADMIN', 'OPERADOR', 'SUPERVISOR')">
         <a routerLink="/clientes" routerLinkActive="active" class="menu-item">
           <span class="icon">▣</span>
           <span>Clientes</span>
@@ -43,11 +43,6 @@
           <span>Conductores</span>
         </a>
 
-        <a routerLink="/flota" routerLinkActive="active" class="menu-item">
-          <span class="icon">▰</span>
-          <span>Flota</span>
-        </a>
-
         <a routerLink="/viajes" routerLinkActive="active" class="menu-item">
           <span class="icon">➜</span>
           <span>Viajes</span>
@@ -59,12 +54,23 @@
         </a>
       </ng-container>
 
-      <ng-container *ngIf="puedeAcceder('ADMIN', 'SOMMA') || puedeAcceder('ADMIN')">
-        <div class="menu-label">CONTROL</div>
-      </ng-container>
+      <a
+        *ngIf="puedeAcceder('ADMIN', 'OPERADOR', 'MANTENIMIENTO', 'SUPERVISOR')"
+        routerLink="/flota"
+        routerLinkActive="active"
+        class="menu-item">
+        <span class="icon">▰</span>
+        <span>Flota</span>
+      </a>
+
+      <div
+        *ngIf="puedeAcceder('ADMIN', 'SOMMA', 'MANTENIMIENTO', 'SUPERVISOR')"
+        class="menu-label">
+        CONTROL
+      </div>
 
       <a
-        *ngIf="puedeAcceder('ADMIN')"
+        *ngIf="puedeAcceder('ADMIN', 'MANTENIMIENTO', 'SUPERVISOR')"
         routerLink="/mantenimiento"
         routerLinkActive="active"
         class="menu-item">
@@ -73,13 +79,21 @@
       </a>
 
       <a
-        *ngIf="puedeAcceder('ADMIN', 'SOMMA')"
+        *ngIf="puedeAcceder('ADMIN', 'SOMMA', 'SUPERVISOR')"
         routerLink="/somma"
         routerLinkActive="active"
         class="menu-item">
         <span class="icon">✓</span>
         <span>SOMMA</span>
       </a>
+
+      <ng-container *ngIf="puedeAcceder('ADMIN')">
+        <div class="menu-label">ADMINISTRACIÓN</div>
+        <a routerLink="/seguridad" routerLinkActive="active" class="menu-item">
+          <span class="icon">🔒</span>
+          <span>Seguridad</span>
+        </a>
+      </ng-container>
     </nav>
 
     <div class="sidebar-footer">
