@@ -77,7 +77,14 @@ public class SemirremolqueService implements SemirremolqueUseCase {
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Semirremolque actual = obtenerPorId(id);
+
+        if (actual.getEstado() != EstadoUnidad.DISPONIBLE) {
+            throw new ReglaNegocioException(
+                    "Solo se puede eliminar un semirremolque disponible; no elimine unidades asignadas o en mantenimiento"
+            );
+        }
+
         repo.eliminarPorId(id);
     }
 }
