@@ -100,7 +100,14 @@ public class ViajeService implements ViajeUseCase {
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Viaje actual = obtenerPorId(id);
+
+        if (actual.getEstado() != EstadoViaje.CANCELADO) {
+            throw new ReglaNegocioException(
+                    "Solo se puede eliminar un viaje cancelado; cancele el viaje para liberar correctamente la programación y sus recursos"
+            );
+        }
+
         repo.eliminarPorId(id);
     }
 
