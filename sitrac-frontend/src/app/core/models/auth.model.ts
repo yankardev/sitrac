@@ -1,4 +1,4 @@
-export type RolUsuario = 'ADMIN' | 'OPERADOR' | 'SOMMA';
+export type RolUsuario = 'ADMIN' | 'OPERADOR' | 'SOMMA' | 'MANTENIMIENTO' | 'SUPERVISOR';
 
 export interface LoginRequest {
   username: string;
