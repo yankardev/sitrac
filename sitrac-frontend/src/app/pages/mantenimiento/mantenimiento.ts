@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 import {
   EstadoMantenimiento,
@@ -11,6 +11,7 @@ import {
 } from '../../core/models/mantenimiento.model';
 import { SemirremolqueOperacion, TractoOperacion } from '../../core/models/programacion.model';
 import { MantenimientoService } from '../../core/services/mantenimiento.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-mantenimiento',
@@ -20,6 +21,7 @@ import { MantenimientoService } from '../../core/services/mantenimiento.service'
 })
 export class Mantenimiento implements OnInit {
   private readonly service = inject(MantenimientoService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   mantenimientos: MantenimientoModel[] = [];
   tractos: TractoOperacion[] = [];
@@ -69,25 +71,26 @@ export class Mantenimiento implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
+    const primeraCarga = this.mantenimientos.length === 0;
+    if (primeraCarga) {
+      this.cargando = true;
+    }
     this.error = '';
 
-    forkJoin({
-      mantenimientos: this.service.listar(),
-      tractos: this.service.listarTractos(),
-      semirremolques: this.service.listarSemirremolques()
-    }).subscribe({
-      next: data => {
-        this.mantenimientos = [...data.mantenimientos].sort((a, b) => b.id - a.id);
-        this.tractos = data.tractos;
-        this.semirremolques = data.semirremolques;
+    this.service.listar().subscribe({
+      next: mantenimientos => {
+        this.mantenimientos = [...mantenimientos].sort((a, b) => b.id - a.id);
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
-        this.error = this.mensajeError(error, 'No se pudo cargar Mantenimiento. Verifica mantenimiento-service y flota-service.');
+        this.error = this.mensajeError(error, 'No se pudo cargar Mantenimiento. Verifica mantenimiento-service.');
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
+
+    this.cargarFlotaEnSegundoPlano();
   }
 
   abrirNuevo(): void {
@@ -136,35 +139,43 @@ export class Mantenimiento implements OnInit {
     this.error = '';
     this.mensaje = '';
 
+    const esNuevo = this.editandoId === null;
     const payload: MantenimientoForm = {
       ...this.formulario,
       unidadId: Number(this.formulario.unidadId),
       descripcion: this.formulario.descripcion.trim(),
       costo: this.formulario.costo === null ? null : Number(this.formulario.costo),
       fechaFin: this.formulario.fechaFin || null,
-      estado: this.editandoId === null ? null : this.formulario.estado
+      estado: esNuevo ? null : this.formulario.estado
     };
 
-    const operacion = this.editandoId === null
+    const operacion = esNuevo
       ? this.service.crear(payload)
-      : this.service.actualizar(this.editandoId, payload);
+      : this.service.actualizar(this.editandoId!, payload);
 
-    operacion.subscribe({
-      next: item => {
-        this.mensaje = this.editandoId === null
-          ? `Mantenimiento #MANT-${this.codigo(item.id)} registrado correctamente.`
-          : `Mantenimiento #MANT-${this.codigo(item.id)} actualizado correctamente.`;
-        this.guardando = false;
-        this.mostrarFormulario = false;
-        this.editandoId = null;
-        this.formulario = this.formularioVacio();
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.mensajeError(error, 'No se pudo guardar el mantenimiento.');
-        this.guardando = false;
-      }
-    });
+    operacion
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: item => {
+          this.mensaje = esNuevo
+            ? `Mantenimiento #MANT-${this.codigo(item.id)} registrado correctamente.`
+            : `Mantenimiento #MANT-${this.codigo(item.id)} actualizado correctamente.`;
+          this.aplicarLocal(item);
+          this.mostrarFormulario = false;
+          this.editandoId = null;
+          this.formulario = this.formularioVacio();
+          this.cdr.detectChanges();
+          this.cargarFlotaEnSegundoPlano();
+        },
+        error: error => {
+          this.error = this.mensajeError(error, 'No se pudo guardar el mantenimiento.');
+        }
+      });
   }
 
   cambiarEstado(item: MantenimientoModel, estado: EstadoMantenimiento): void {
@@ -180,21 +191,29 @@ export class Mantenimiento implements OnInit {
     };
 
     this.service.actualizar(item.id, payload).subscribe({
-      next: () => {
+      next: actualizado => {
         this.mensaje = `Mantenimiento actualizado a ${this.etiquetaEstado(estado)}.`;
-        this.cargarDatos();
+        this.aplicarLocal(actualizado);
+        this.cdr.detectChanges();
+        this.cargarFlotaEnSegundoPlano();
       },
       error: error => this.error = this.mensajeError(error, 'No se pudo actualizar el estado.')
     });
   }
 
   eliminar(item: MantenimientoModel): void {
-    if (!window.confirm(`¿Eliminar el mantenimiento #MANT-${this.codigo(item.id)}?`)) return;
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar la orden #MANT-${this.codigo(item.id)}.`,
+      'CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente esta orden de mantenimiento?'
+    );
+    if (!confirmado) return;
 
     this.service.eliminar(item.id).subscribe({
       next: () => {
+        this.mantenimientos = this.mantenimientos.filter(x => x.id !== item.id);
         this.mensaje = 'Mantenimiento eliminado correctamente.';
-        this.cargarDatos();
+        this.cdr.detectChanges();
+        this.cargarFlotaEnSegundoPlano();
       },
       error: error => this.error = this.mensajeError(error, 'No se pudo eliminar el mantenimiento.')
     });
@@ -216,6 +235,29 @@ export class Mantenimiento implements OnInit {
 
   codigo(id: number): string {
     return id.toString().padStart(4, '0');
+  }
+
+  private cargarFlotaEnSegundoPlano(): void {
+    forkJoin({
+      tractos: this.service.listarTractos(),
+      semirremolques: this.service.listarSemirremolques()
+    }).subscribe({
+      next: data => {
+        this.tractos = data.tractos;
+        this.semirremolques = data.semirremolques;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // La tabla de mantenimiento ya está disponible aunque la flota demore.
+      }
+    });
+  }
+
+  private aplicarLocal(item: MantenimientoModel): void {
+    const existe = this.mantenimientos.some(x => x.id === item.id);
+    this.mantenimientos = existe
+      ? this.mantenimientos.map(x => x.id === item.id ? item : x)
+      : [item, ...this.mantenimientos];
   }
 
   private formularioVacio(): MantenimientoForm {
