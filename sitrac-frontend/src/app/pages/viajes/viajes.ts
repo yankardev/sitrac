@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 import { Pedido } from '../../core/models/pedido.model';
 import {
@@ -24,6 +24,7 @@ export class Viajes implements OnInit {
   private readonly viajeService = inject(ViajeService);
   private readonly programacionService = inject(ProgramacionService);
   private readonly pedidoService = inject(PedidoService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   viajes: Viaje[] = [];
   programaciones: ProgramacionModel[] = [];
@@ -102,32 +103,8 @@ export class Viajes implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
-    this.error = '';
-
-    forkJoin({
-      viajes: this.viajeService.listar(),
-      programaciones: this.programacionService.listar(),
-      pedidos: this.pedidoService.listar(),
-      conductores: this.programacionService.listarConductores(),
-      tractos: this.programacionService.listarTractos()
-    }).subscribe({
-      next: data => {
-        this.viajes = [...data.viajes].sort((a, b) => b.id - a.id);
-        this.programaciones = data.programaciones;
-        this.pedidos = data.pedidos;
-        this.conductores = data.conductores;
-        this.tractos = data.tractos;
-        this.cargando = false;
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(
-          error,
-          'No se pudo cargar Viajes. Verifica viaje-service y los servicios relacionados.'
-        );
-        this.cargando = false;
-      }
-    });
+    this.cargarViajesPrincipal();
+    this.cargarContextoOperativo();
   }
 
   abrirNuevo(): void {
@@ -163,18 +140,25 @@ export class Viajes implements OnInit {
     this.error = '';
     this.mensaje = '';
 
-    this.viajeService.crear(payload).subscribe({
-      next: viaje => {
-        this.mensaje = `Viaje #VIA-${this.codigo(viaje.id)} generado correctamente.`;
-        this.guardando = false;
-        this.mostrarNuevo = false;
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo generar el viaje.');
-        this.guardando = false;
-      }
-    });
+    this.viajeService.crear(payload)
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: viaje => {
+          this.viajes = [viaje, ...this.viajes.filter(item => item.id !== viaje.id)];
+          this.mensaje = `Viaje #VIA-${this.codigo(viaje.id)} generado correctamente.`;
+          this.mostrarNuevo = false;
+          this.nuevoViaje = { programacionId: null, observacion: '' };
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo generar el viaje.');
+        }
+      });
   }
 
   abrirOperacion(viaje: Viaje, tipo: 'INICIAR' | 'FINALIZAR'): void {
@@ -221,22 +205,28 @@ export class Viajes implements OnInit {
     this.guardando = true;
     this.error = '';
 
-    this.viajeService.actualizar(viaje.id, payload).subscribe({
-      next: actualizado => {
-        this.mensaje = iniciar
-          ? `Viaje #VIA-${this.codigo(actualizado.id)} iniciado correctamente.`
-          : `Viaje #VIA-${this.codigo(actualizado.id)} finalizado correctamente.`;
-        this.guardando = false;
-        this.mostrarOperacion = false;
-        this.viajeSeleccionado = null;
-        this.tipoOperacion = null;
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo actualizar el viaje.');
-        this.guardando = false;
-      }
-    });
+    this.viajeService.actualizar(viaje.id, payload)
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: actualizado => {
+          this.reemplazarViaje(actualizado);
+          this.mensaje = iniciar
+            ? `Viaje #VIA-${this.codigo(actualizado.id)} iniciado correctamente.`
+            : `Viaje #VIA-${this.codigo(actualizado.id)} finalizado correctamente.`;
+          this.mostrarOperacion = false;
+          this.viajeSeleccionado = null;
+          this.tipoOperacion = null;
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo actualizar el viaje.');
+        }
+      });
   }
 
   cancelar(viaje: Viaje): void {
@@ -258,15 +248,27 @@ export class Viajes implements OnInit {
       estado: 'CANCELADO'
     };
 
-    this.viajeService.actualizar(viaje.id, payload).subscribe({
-      next: () => {
-        this.mensaje = 'Viaje cancelado correctamente.';
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo cancelar el viaje.');
-      }
-    });
+    this.guardando = true;
+    this.error = '';
+    this.mensaje = '';
+
+    this.viajeService.actualizar(viaje.id, payload)
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: actualizado => {
+          this.reemplazarViaje(actualizado);
+          this.mensaje = 'Viaje cancelado correctamente.';
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo cancelar el viaje.');
+        }
+      });
   }
 
   eliminar(viaje: Viaje): void {
@@ -279,15 +281,27 @@ export class Viajes implements OnInit {
       return;
     }
 
-    this.viajeService.eliminar(viaje.id).subscribe({
-      next: () => {
-        this.mensaje = 'Viaje eliminado correctamente.';
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el viaje.');
-      }
-    });
+    this.guardando = true;
+    this.error = '';
+    this.mensaje = '';
+
+    this.viajeService.eliminar(viaje.id)
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.viajes = this.viajes.filter(item => item.id !== viaje.id);
+          this.mensaje = 'Viaje eliminado correctamente.';
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el viaje.');
+        }
+      });
   }
 
   programacionPorId(id: number): ProgramacionModel | undefined {
@@ -328,6 +342,62 @@ export class Viajes implements OnInit {
     }
 
     return viaje.kilometrajeFinal - viaje.kilometrajeInicial;
+  }
+
+  private cargarViajesPrincipal(): void {
+    this.cargando = true;
+    this.error = '';
+
+    this.viajeService.listar()
+      .pipe(
+        finalize(() => {
+          this.cargando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: viajes => {
+          this.viajes = [...viajes].sort((a, b) => b.id - a.id);
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(
+            error,
+            'No se pudo cargar la lista de viajes. Verifica viaje-service.'
+          );
+        }
+      });
+  }
+
+  private cargarContextoOperativo(): void {
+    forkJoin({
+      programaciones: this.programacionService.listar(),
+      pedidos: this.pedidoService.listar(),
+      conductores: this.programacionService.listarConductores(),
+      tractos: this.programacionService.listarTractos()
+    }).subscribe({
+      next: data => {
+        this.programaciones = data.programaciones;
+        this.pedidos = data.pedidos;
+        this.conductores = data.conductores;
+        this.tractos = data.tractos;
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        if (!this.error) {
+          this.error = this.obtenerMensajeError(
+            error,
+            'La lista de viajes cargó, pero faltan datos relacionados de Programación, Pedidos, Conductores o Flota.'
+          );
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private reemplazarViaje(actualizado: Viaje): void {
+    this.viajes = this.viajes
+      .map(viaje => viaje.id === actualizado.id ? actualizado : viaje)
+      .sort((a, b) => b.id - a.id);
   }
 
   private fechaHoraActual(): string {
