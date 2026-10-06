@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 
 import { Conductor, ConductorForm } from '../../core/models/conductor.model';
 import { ConductorService } from '../../core/services/conductor.service';
@@ -13,6 +14,7 @@ import { ConductorService } from '../../core/services/conductor.service';
 })
 export class Conductores implements OnInit {
   private readonly conductorService = inject(ConductorService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   conductores: Conductor[] = [];
   busqueda = '';
@@ -154,23 +156,28 @@ export class Conductores implements OnInit {
         })
       : this.conductorService.actualizar(this.conductorEditandoId, payload);
 
-    operacion.subscribe({
-      next: conductor => {
-        this.mensaje = this.conductorEditandoId === null
-          ? `Conductor ${conductor.nombres} ${conductor.apellidos} registrado correctamente.`
-          : `Conductor ${conductor.nombres} ${conductor.apellidos} actualizado correctamente.`;
+    operacion
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: conductor => {
+          this.mensaje = this.conductorEditandoId === null
+            ? `Conductor ${conductor.nombres} ${conductor.apellidos} registrado correctamente.`
+            : `Conductor ${conductor.nombres} ${conductor.apellidos} actualizado correctamente.`;
 
-        this.guardando = false;
-        this.mostrarFormulario = false;
-        this.conductorEditandoId = null;
-        this.formulario = this.formularioVacio();
-        this.cargarConductores();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo guardar el conductor.');
-        this.guardando = false;
-      }
-    });
+          this.mostrarFormulario = false;
+          this.conductorEditandoId = null;
+          this.formulario = this.formularioVacio();
+          this.cargarConductores();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo guardar el conductor.');
+        }
+      });
   }
 
   cambiarDisponibilidad(conductor: Conductor): void {
