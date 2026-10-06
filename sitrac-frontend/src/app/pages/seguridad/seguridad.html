@@ -1,0 +1,178 @@
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Administración / Seguridad</span>
+    <h1>Seguridad y usuarios</h1>
+    <p>Administra accesos, roles, bloqueos y restablecimiento de contraseñas.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    + Nuevo usuario
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">✓ {{ mensaje }}</div>
+<div class="alert error" *ngIf="error">! {{ error }}</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">👤</div>
+    <div><span>Total usuarios</span><strong>{{ usuarios.length }}</strong></div>
+  </article>
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div><span>Activos</span><strong>{{ totalActivos }}</strong></div>
+  </article>
+  <article class="summary-card">
+    <div class="summary-icon gray">×</div>
+    <div><span>Bloqueados</span><strong>{{ totalBloqueados }}</strong></div>
+  </article>
+  <article class="summary-card">
+    <div class="summary-icon blue">A</div>
+    <div><span>Administradores</span><strong>{{ totalAdministradores }}</strong></div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Usuarios del sistema</h2>
+      <p>Solo el administrador puede gestionar estas cuentas.</p>
+    </div>
+
+    <div class="filters">
+      <input type="search" [(ngModel)]="busqueda" placeholder="Buscar usuario o nombre" />
+      <select [(ngModel)]="filtroRol">
+        <option value="TODOS">Todos los roles</option>
+        <option *ngFor="let rol of roles" [value]="rol.valor">{{ rol.etiqueta }}</option>
+      </select>
+      <select [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="BLOQUEADO">Bloqueados</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando usuarios...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && usuariosFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let usuario of usuariosFiltrados">
+          <td><strong>{{ usuario.username }}</strong><span class="secondary">ID #{{ usuario.id }}</span></td>
+          <td>{{ usuario.nombreCompleto }}</td>
+          <td><span class="role-badge">{{ rolEtiqueta(usuario.rol) }}</span></td>
+          <td>
+            <span class="status" [class.active]="usuario.activo" [class.inactive]="!usuario.activo">
+              <i></i>{{ usuario.activo ? 'ACTIVO' : 'BLOQUEADO' }}
+            </span>
+          </td>
+          <td class="actions-column">
+            <div class="row-actions">
+              <button type="button" class="icon-button edit" title="Editar usuario" (click)="editar(usuario)">✎</button>
+              <button type="button" class="icon-button key" title="Restablecer contraseña" (click)="abrirReset(usuario)">🔑</button>
+              <button
+                type="button"
+                class="icon-button"
+                [class.block]="usuario.activo"
+                [class.activate]="!usuario.activo"
+                [title]="usuario.activo ? 'Bloquear acceso' : 'Activar acceso'"
+                (click)="cambiarEstado(usuario)">
+                {{ usuario.activo ? '⊘' : '✓' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && usuariosFiltrados.length === 0">
+    <h3>No hay usuarios para mostrar</h3>
+    <p>Modifica los filtros o registra un nuevo usuario.</p>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ editandoId === null ? 'NUEVO USUARIO' : 'EDITAR USUARIO' }}</span>
+        <h2>{{ editandoId === null ? 'Crear acceso a SITRAC' : 'Actualizar usuario' }}</h2>
+        <p>Asigna el perfil según las funciones que realizará dentro del sistema.</p>
+      </div>
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #form="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <label class="field full">
+          <span>Nombre completo *</span>
+          <input name="nombreCompleto" type="text" [(ngModel)]="formulario.nombreCompleto" required maxlength="120" />
+        </label>
+
+        <label class="field">
+          <span>Usuario *</span>
+          <input name="username" type="text" [(ngModel)]="formulario.username" required minlength="4" maxlength="50" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span>Rol *</span>
+          <select name="rol" [(ngModel)]="formulario.rol" required>
+            <option *ngFor="let rol of roles" [value]="rol.valor">{{ rol.etiqueta }}</option>
+          </select>
+        </label>
+
+        <label class="field full" *ngIf="editandoId === null">
+          <span>Contraseña temporal *</span>
+          <input name="password" type="password" [(ngModel)]="formulario.password" required minlength="6" maxlength="72" autocomplete="new-password" />
+          <small>La contraseña se almacenará cifrada con BCrypt.</small>
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" (click)="cerrarFormulario()" [disabled]="guardando">Cancelar</button>
+        <button class="primary-button" type="submit" [disabled]="form.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (editandoId === null ? 'Crear usuario' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="modal-backdrop" *ngIf="mostrarReset" (click)="cerrarReset()">
+  <section class="reset-modal" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>RESTABLECER CONTRASEÑA</span>
+        <h2>{{ usuarioReset?.username }}</h2>
+        <p>La contraseña anterior dejará de funcionar inmediatamente.</p>
+      </div>
+      <button class="close-button" type="button" (click)="cerrarReset()">×</button>
+    </div>
+
+    <label class="field">
+      <span>Nueva contraseña temporal *</span>
+      <input type="password" [(ngModel)]="passwordTemporal" minlength="6" maxlength="72" autocomplete="new-password" />
+    </label>
+
+    <div class="drawer-actions">
+      <button class="secondary-button" type="button" (click)="cerrarReset()" [disabled]="guardando">Cancelar</button>
+      <button class="primary-button" type="button" (click)="confirmarReset()" [disabled]="guardando || passwordTemporal.length < 6">
+        {{ guardando ? 'Actualizando...' : 'Restablecer contraseña' }}
+      </button>
+    </div>
+  </section>
+</div>
