@@ -242,10 +242,10 @@
         </label>
 
         <div class="resource-hint full">
-          <span>Unidad sugerida</span>
+          <span>Semirremolque requerido</span>
           <strong>{{ recursoSugerido(formulario.tipoCarga) }}</strong>
           <p>
-            La asignación final se realizará en Programación según disponibilidad y capacidad.
+            El tipo se determina automáticamente según la carga. La unidad exacta y su placa se seleccionan después en Programación.
           </p>
         </div>
 
@@ -261,26 +261,38 @@
 
         <label class="field">
           <span>Origen *</span>
-          <input
-            name="origen"
-            type="text"
-            [(ngModel)]="formulario.origen"
-            maxlength="150"
-            placeholder="Ej. Pacasmayo"
-            required
-          />
+          <select name="origen" [(ngModel)]="formulario.origen" required>
+            <option value="" disabled>Selecciona el origen</option>
+            <option
+              *ngIf="formulario.origen && !esPuntoRuta(formulario.origen)"
+              [value]="formulario.origen">
+              {{ formulario.origen }} (registrado)
+            </option>
+            <option
+              *ngFor="let punto of puntosRuta"
+              [value]="punto"
+              [disabled]="punto === formulario.destino">
+              {{ punto }}
+            </option>
+          </select>
         </label>
 
         <label class="field">
           <span>Destino *</span>
-          <input
-            name="destino"
-            type="text"
-            [(ngModel)]="formulario.destino"
-            maxlength="150"
-            placeholder="Ej. Trujillo"
-            required
-          />
+          <select name="destino" [(ngModel)]="formulario.destino" required>
+            <option value="" disabled>Selecciona el destino</option>
+            <option
+              *ngIf="formulario.destino && !esPuntoRuta(formulario.destino)"
+              [value]="formulario.destino">
+              {{ formulario.destino }} (registrado)
+            </option>
+            <option
+              *ngFor="let punto of puntosRuta"
+              [value]="punto"
+              [disabled]="punto === formulario.origen">
+              {{ punto }}
+            </option>
+          </select>
         </label>
 
         <label class="field">
