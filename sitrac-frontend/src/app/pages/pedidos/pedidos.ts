@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import { Cliente } from '../../core/models/cliente.model';
 import {
@@ -22,6 +23,21 @@ import { PedidoService } from '../../core/services/pedido.service';
 export class Pedidos implements OnInit {
   private readonly pedidoService = inject(PedidoService);
   private readonly clienteService = inject(ClienteService);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  readonly puntosRuta: string[] = [
+    'Pacasmayo, La Libertad',
+    'Trujillo, La Libertad',
+    'Salaverry, La Libertad',
+    'Virú, La Libertad',
+    'Quiruvilca, La Libertad',
+    'Chimbote, Áncash',
+    'Chiclayo, Lambayeque',
+    'Cajamarca, Cajamarca',
+    'Piura, Piura',
+    'Callao, Callao',
+    'Lima, Lima'
+  ];
 
   pedidos: Pedido[] = [];
   clientes: Cliente[] = [];
@@ -94,6 +110,7 @@ export class Pedidos implements OnInit {
           next: pedidos => {
             this.pedidos = [...pedidos].sort((a, b) => b.id - a.id);
             this.cargando = false;
+            this.cdr.detectChanges();
           },
           error: error => {
             this.error = this.obtenerMensajeError(
@@ -101,6 +118,7 @@ export class Pedidos implements OnInit {
               'No se pudo cargar la lista de pedidos. Verifica que pedido-service esté ejecutándose.'
             );
             this.cargando = false;
+            this.cdr.detectChanges();
           }
         });
       },
@@ -110,6 +128,7 @@ export class Pedidos implements OnInit {
           'No se pudieron cargar los clientes. Verifica que cliente-service esté ejecutándose.'
         );
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -155,6 +174,16 @@ export class Pedidos implements OnInit {
       return;
     }
 
+    if (!this.formulario.origen || !this.formulario.destino) {
+      this.error = 'Selecciona el origen y el destino del pedido.';
+      return;
+    }
+
+    if (this.formulario.origen === this.formulario.destino) {
+      this.error = 'El origen y el destino deben ser diferentes.';
+      return;
+    }
+
     this.guardando = true;
     this.error = '';
     this.mensaje = '';
@@ -174,23 +203,28 @@ export class Pedidos implements OnInit {
       ? this.pedidoService.crear(payload)
       : this.pedidoService.actualizar(this.pedidoEditandoId, payload);
 
-    operacion.subscribe({
-      next: pedido => {
-        this.mensaje = this.pedidoEditandoId === null
-          ? `Pedido #PED-${this.codigoPedido(pedido.id)} registrado correctamente.`
-          : `Pedido #PED-${this.codigoPedido(pedido.id)} actualizado correctamente.`;
+    operacion
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: pedido => {
+          this.mensaje = this.pedidoEditandoId === null
+            ? `Pedido #PED-${this.codigoPedido(pedido.id)} registrado correctamente.`
+            : `Pedido #PED-${this.codigoPedido(pedido.id)} actualizado correctamente.`;
 
-        this.guardando = false;
-        this.mostrarFormulario = false;
-        this.pedidoEditandoId = null;
-        this.formulario = this.formularioVacio();
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo guardar el pedido.');
-        this.guardando = false;
-      }
-    });
+          this.mostrarFormulario = false;
+          this.pedidoEditandoId = null;
+          this.formulario = this.formularioVacio();
+          this.cargarDatos();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo guardar el pedido.');
+        }
+      });
   }
 
   eliminar(pedido: Pedido): void {
@@ -245,6 +279,10 @@ export class Pedidos implements OnInit {
     };
 
     return recursos[tipo];
+  }
+
+  esPuntoRuta(punto: string): boolean {
+    return this.puntosRuta.includes(punto);
   }
 
   etiquetaEstado(estado: EstadoPedido): string {
