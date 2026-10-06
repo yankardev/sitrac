@@ -275,28 +275,30 @@
         </label>
 
         <label class="field full" *ngIf="formulario.tipoAbastecimiento === 'INTERNO'">
-          <span>Tanque de origen *</span>
-          <input
-            name="tanqueOrigen"
-            type="text"
-            maxlength="100"
-            [(ngModel)]="formulario.tanqueOrigen"
-            placeholder="Ej. Tanque Base Trujillo 01"
-            required
-          />
+          <span>Tanque / base de origen *</span>
+          <select name="tanqueOrigen" [(ngModel)]="formulario.tanqueOrigen" required>
+            <option value="" disabled>Selecciona una base</option>
+            <option *ngFor="let tanque of tanquesBase" [value]="tanque">{{ tanque }}</option>
+            <option
+              *ngIf="formulario.tanqueOrigen && !tanquesBase.includes(formulario.tanqueOrigen)"
+              [value]="formulario.tanqueOrigen">
+              {{ formulario.tanqueOrigen }}
+            </option>
+          </select>
         </label>
 
         <ng-container *ngIf="formulario.tipoAbastecimiento === 'TERCERO'">
           <label class="field">
             <span>Proveedor *</span>
-            <input
-              name="proveedor"
-              type="text"
-              maxlength="150"
-              [(ngModel)]="formulario.proveedor"
-              placeholder="Ej. Primax"
-              required
-            />
+            <select name="proveedor" [(ngModel)]="formulario.proveedor" required>
+              <option value="" disabled>Selecciona un proveedor</option>
+              <option *ngFor="let proveedor of proveedoresCombustible" [value]="proveedor">{{ proveedor }}</option>
+              <option
+                *ngIf="formulario.proveedor && !proveedoresCombustible.includes(formulario.proveedor)"
+                [value]="formulario.proveedor">
+                {{ formulario.proveedor }}
+              </option>
+            </select>
           </label>
 
           <label class="field">
