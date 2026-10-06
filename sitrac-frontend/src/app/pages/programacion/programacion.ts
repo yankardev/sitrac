@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
+import { Cliente } from '../../core/models/cliente.model';
 import { Pedido, TipoCarga } from '../../core/models/pedido.model';
 import {
   ConductorOperacion,
@@ -12,6 +13,7 @@ import {
   SemirremolqueOperacion,
   TractoOperacion
 } from '../../core/models/programacion.model';
+import { ClienteService } from '../../core/services/cliente.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { ProgramacionService } from '../../core/services/programacion.service';
 
@@ -24,9 +26,12 @@ import { ProgramacionService } from '../../core/services/programacion.service';
 export class Programacion implements OnInit {
   private readonly programacionService = inject(ProgramacionService);
   private readonly pedidoService = inject(PedidoService);
+  private readonly clienteService = inject(ClienteService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   programaciones: ProgramacionModel[] = [];
   pedidos: Pedido[] = [];
+  clientes: Cliente[] = [];
   conductores: ConductorOperacion[] = [];
   tractos: TractoOperacion[] = [];
   semirremolques: SemirremolqueOperacion[] = [];
@@ -60,9 +65,13 @@ export class Programacion implements OnInit {
         return true;
       }
 
+      const pedido = this.pedidoPorId(programacion.pedidoId);
+      const cliente = pedido ? this.nombreCliente(pedido.clienteId).toLowerCase() : '';
+
       return (
         `prog-${programacion.id}`.includes(termino) ||
         this.codigoPedido(programacion.pedidoId).includes(termino) ||
+        cliente.includes(termino) ||
         this.conductorNombre(programacion.conductorId).toLowerCase().includes(termino) ||
         this.tractoPlaca(programacion.tractoId).toLowerCase().includes(termino) ||
         this.semirremolquePlaca(programacion.semirremolqueId).toLowerCase().includes(termino)
@@ -71,7 +80,12 @@ export class Programacion implements OnInit {
   }
 
   get pedidosDisponibles(): Pedido[] {
-    return this.pedidos.filter(pedido => pedido.estado === 'REGISTRADO');
+    return this.pedidos.filter(pedido =>
+      pedido.estado === 'REGISTRADO' &&
+      !this.programaciones.some(programacion =>
+        programacion.estado === 'PROGRAMADA' && programacion.pedidoId === pedido.id
+      )
+    );
   }
 
   get conductoresDisponibles(): ConductorOperacion[] {
@@ -80,12 +94,21 @@ export class Programacion implements OnInit {
     return this.conductores.filter(conductor =>
       conductor.activo &&
       conductor.disponible &&
-      conductor.fechaVencimientoLicencia >= hoy
+      conductor.fechaVencimientoLicencia >= hoy &&
+      !this.programaciones.some(programacion =>
+        programacion.estado === 'PROGRAMADA' && programacion.conductorId === conductor.id
+      )
     );
   }
 
   get tractosDisponibles(): TractoOperacion[] {
-    return this.tractos.filter(tracto => tracto.activo && tracto.estado === 'DISPONIBLE');
+    return this.tractos.filter(tracto =>
+      tracto.activo &&
+      tracto.estado === 'DISPONIBLE' &&
+      !this.programaciones.some(programacion =>
+        programacion.estado === 'PROGRAMADA' && programacion.tractoId === tracto.id
+      )
+    );
   }
 
   get semirremolquesDisponibles(): SemirremolqueOperacion[] {
@@ -93,8 +116,19 @@ export class Programacion implements OnInit {
     const tipoRequerido = pedido ? this.tipoSemirremolqueRequerido(pedido.tipoCarga) : null;
 
     return this.semirremolques.filter(semirremolque => {
-      const disponible = semirremolque.activo && semirremolque.estado === 'DISPONIBLE';
-      const compatible = !tipoRequerido || tipoRequerido === 'SEGUN_EVALUACION' || semirremolque.tipo === tipoRequerido;
+      const disponible =
+        semirremolque.activo &&
+        semirremolque.estado === 'DISPONIBLE' &&
+        !this.programaciones.some(programacion =>
+          programacion.estado === 'PROGRAMADA' &&
+          programacion.semirremolqueId === semirremolque.id
+        );
+
+      const compatible =
+        !tipoRequerido ||
+        tipoRequerido === 'SEGUN_EVALUACION' ||
+        semirremolque.tipo === tipoRequerido;
+
       return disponible && compatible;
     });
   }
@@ -114,6 +148,7 @@ export class Programacion implements OnInit {
     forkJoin({
       programaciones: this.programacionService.listar(),
       pedidos: this.pedidoService.listar(),
+      clientes: this.clienteService.listar(),
       conductores: this.programacionService.listarConductores(),
       tractos: this.programacionService.listarTractos(),
       semirremolques: this.programacionService.listarSemirremolques()
@@ -121,6 +156,7 @@ export class Programacion implements OnInit {
       next: data => {
         this.programaciones = [...data.programaciones].sort((a, b) => b.id - a.id);
         this.pedidos = data.pedidos;
+        this.clientes = data.clientes;
         this.conductores = data.conductores;
         this.tractos = data.tractos;
         this.semirremolques = data.semirremolques;
@@ -129,7 +165,7 @@ export class Programacion implements OnInit {
       error: error => {
         this.error = this.obtenerMensajeError(
           error,
-          'No se pudo cargar Programación. Verifica pedido-service, conductor-service, flota-service y programacion-service.'
+          'No se pudo cargar Programación. Verifica pedido-service, cliente-service, conductor-service, flota-service y programacion-service.'
         );
         this.cargando = false;
       }
@@ -185,6 +221,14 @@ export class Programacion implements OnInit {
       return;
     }
 
+    if (this.programacionEditandoId === null) {
+      const validacion = this.validarDisponibilidadActual();
+      if (validacion) {
+        this.error = validacion;
+        return;
+      }
+    }
+
     this.guardando = true;
     this.error = '';
     this.mensaje = '';
@@ -203,22 +247,27 @@ export class Programacion implements OnInit {
       ? this.programacionService.crear(payload)
       : this.programacionService.actualizar(this.programacionEditandoId, payload);
 
-    operacion.subscribe({
-      next: programacion => {
-        this.mensaje = this.programacionEditandoId === null
-          ? `Programación #PROG-${this.codigo(programacion.id)} creada correctamente.`
-          : `Programación #PROG-${this.codigo(programacion.id)} actualizada correctamente.`;
-        this.guardando = false;
-        this.mostrarFormulario = false;
-        this.programacionEditandoId = null;
-        this.formulario = this.formularioVacio();
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo guardar la programación.');
-        this.guardando = false;
-      }
-    });
+    operacion
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: programacion => {
+          this.mensaje = this.programacionEditandoId === null
+            ? `Programación #PROG-${this.codigo(programacion.id)} creada correctamente.`
+            : `Programación #PROG-${this.codigo(programacion.id)} actualizada correctamente.`;
+          this.mostrarFormulario = false;
+          this.programacionEditandoId = null;
+          this.formulario = this.formularioVacio();
+          this.cargarDatos();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo guardar la programación.');
+        }
+      });
   }
 
   cancelar(programacion: ProgramacionModel): void {
@@ -295,6 +344,11 @@ export class Programacion implements OnInit {
     return this.pedidos.find(pedido => pedido.id === id);
   }
 
+  nombreCliente(clienteId: number): string {
+    return this.clientes.find(cliente => cliente.id === clienteId)?.nombreRazonSocial
+      ?? `Cliente #${clienteId}`;
+  }
+
   conductorNombre(id: number): string {
     const conductor = this.conductores.find(item => item.id === id);
     return conductor ? `${conductor.nombres} ${conductor.apellidos}` : `Conductor #${id}`;
@@ -338,6 +392,62 @@ export class Programacion implements OnInit {
 
   codigoPedido(id: number): string {
     return `PED-${id.toString().padStart(4, '0')}`;
+  }
+
+  private validarDisponibilidadActual(): string | null {
+    const pedidoId = Number(this.formulario.pedidoId);
+    const conductorId = Number(this.formulario.conductorId);
+    const tractoId = Number(this.formulario.tractoId);
+    const semirremolqueId = Number(this.formulario.semirremolqueId);
+
+    const pedido = this.pedidos.find(item => item.id === pedidoId);
+    if (!pedido || pedido.estado !== 'REGISTRADO' || this.recursoProgramado('PEDIDO', pedidoId)) {
+      return 'El pedido ya no está disponible porque ya fue programado.';
+    }
+
+    const conductor = this.conductores.find(item => item.id === conductorId);
+    if (!conductor || !conductor.activo || !conductor.disponible || this.recursoProgramado('CONDUCTOR', conductorId)) {
+      return 'El conductor seleccionado no está disponible porque ya tiene una programación activa.';
+    }
+
+    const tracto = this.tractos.find(item => item.id === tractoId);
+    if (!tracto || !tracto.activo || tracto.estado !== 'DISPONIBLE' || this.recursoProgramado('TRACTO', tractoId)) {
+      return `La unidad ${tracto?.placa ?? ''} no está disponible porque ya está asignada a una programación.`.trim();
+    }
+
+    const semirremolque = this.semirremolques.find(item => item.id === semirremolqueId);
+    if (
+      !semirremolque ||
+      !semirremolque.activo ||
+      semirremolque.estado !== 'DISPONIBLE' ||
+      this.recursoProgramado('SEMIRREMOLQUE', semirremolqueId)
+    ) {
+      return `El semirremolque ${semirremolque?.placa ?? ''} no está disponible porque ya está asignado a una programación.`.trim();
+    }
+
+    return null;
+  }
+
+  private recursoProgramado(
+    tipo: 'PEDIDO' | 'CONDUCTOR' | 'TRACTO' | 'SEMIRREMOLQUE',
+    id: number
+  ): boolean {
+    return this.programaciones.some(programacion => {
+      if (programacion.estado !== 'PROGRAMADA') {
+        return false;
+      }
+
+      switch (tipo) {
+        case 'PEDIDO':
+          return programacion.pedidoId === id;
+        case 'CONDUCTOR':
+          return programacion.conductorId === id;
+        case 'TRACTO':
+          return programacion.tractoId === id;
+        case 'SEMIRREMOLQUE':
+          return programacion.semirremolqueId === id;
+      }
+    });
   }
 
   private formularioVacio(): ProgramacionForm {
