@@ -50,6 +50,46 @@ public class ProgramacionConsultaRestAdapter implements ProgramacionConsultaPort
         }
     }
 
+    @Override
+    public void iniciarViaje(Long programacionId) {
+        ejecutarAccion(programacionId, "/api/programaciones/{id}/viaje/iniciar", "iniciar");
+    }
+
+    @Override
+    public void finalizarViaje(Long programacionId) {
+        ejecutarAccion(programacionId, "/api/programaciones/{id}/viaje/finalizar", "finalizar");
+    }
+
+    @Override
+    public void cancelarViaje(Long programacionId, boolean iniciado) {
+        try {
+            programacionClient.put()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/programaciones/{id}/viaje/cancelar")
+                            .queryParam("iniciado", iniciado)
+                            .build(programacionId))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException(
+                    "No se pudo sincronizar la cancelación del viaje con programacion-service"
+            );
+        }
+    }
+
+    private void ejecutarAccion(Long programacionId, String uri, String accion) {
+        try {
+            programacionClient.put()
+                    .uri(uri, programacionId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException(
+                    "No se pudo " + accion + " la operación en programacion-service"
+            );
+        }
+    }
+
     private record ProgramacionResponse(
             Long id,
             Long pedidoId,
