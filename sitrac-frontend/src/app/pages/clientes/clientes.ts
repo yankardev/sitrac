@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs';
 
 import { Cliente, ClienteForm, TipoDocumento } from '../../core/models/cliente.model';
 import { ClienteService } from '../../core/services/cliente.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-clientes',
@@ -13,6 +15,7 @@ import { ClienteService } from '../../core/services/cliente.service';
 })
 export class Clientes implements OnInit {
   private readonly clienteService = inject(ClienteService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   clientes: Cliente[] = [];
   busqueda = '';
@@ -59,6 +62,7 @@ export class Clientes implements OnInit {
       next: clientes => {
         this.clientes = clientes;
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(
@@ -66,6 +70,7 @@ export class Clientes implements OnInit {
           'No se pudo cargar la lista de clientes. Verifica que cliente-service esté ejecutándose.'
         );
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -109,6 +114,7 @@ export class Clientes implements OnInit {
     this.error = '';
     this.mensaje = '';
 
+    const esNuevo = this.clienteEditandoId === null;
     const payload: ClienteForm = {
       ...this.formulario,
       numeroDocumento: this.formulario.numeroDocumento.trim(),
@@ -118,7 +124,7 @@ export class Clientes implements OnInit {
       direccion: this.formulario.direccion.trim()
     };
 
-    const operacion = this.clienteEditandoId === null
+    const operacion = esNuevo
       ? this.clienteService.crear({
           tipoDocumento: payload.tipoDocumento,
           numeroDocumento: payload.numeroDocumento,
@@ -127,30 +133,37 @@ export class Clientes implements OnInit {
           email: payload.email,
           direccion: payload.direccion
         })
-      : this.clienteService.actualizar(this.clienteEditandoId, payload);
+      : this.clienteService.actualizar(this.clienteEditandoId!, payload);
 
-    operacion.subscribe({
+    operacion.pipe(finalize(() => {
+      this.guardando = false;
+      this.cdr.detectChanges();
+    })).subscribe({
       next: cliente => {
-        this.mensaje = this.clienteEditandoId === null
+        this.mensaje = esNuevo
           ? `Cliente ${cliente.nombreRazonSocial} registrado correctamente.`
           : `Cliente ${cliente.nombreRazonSocial} actualizado correctamente.`;
 
-        this.guardando = false;
+        const existe = this.clientes.some(x => x.id === cliente.id);
+        this.clientes = existe
+          ? this.clientes.map(x => x.id === cliente.id ? cliente : x)
+          : [cliente, ...this.clientes];
+
         this.mostrarFormulario = false;
         this.clienteEditandoId = null;
         this.formulario = this.formularioVacio();
-        this.cargarClientes();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo guardar el cliente.');
-        this.guardando = false;
       }
     });
   }
 
   eliminar(cliente: Cliente): void {
-    const confirmado = window.confirm(
-      `¿Eliminar al cliente "${cliente.nombreRazonSocial}"?`
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar al cliente "${cliente.nombreRazonSocial}".`,
+      `CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente a "${cliente.nombreRazonSocial}"?`
     );
 
     if (!confirmado) {
@@ -162,8 +175,9 @@ export class Clientes implements OnInit {
 
     this.clienteService.eliminar(cliente.id).subscribe({
       next: () => {
+        this.clientes = this.clientes.filter(x => x.id !== cliente.id);
         this.mensaje = 'Cliente eliminado correctamente.';
-        this.cargarClientes();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el cliente.');
