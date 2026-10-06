@@ -142,34 +142,34 @@ export class Programacion implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
+    const primeraCarga = this.programaciones.length === 0;
+
+    if (primeraCarga) {
+      this.cargando = true;
+    }
+
     this.error = '';
 
-    forkJoin({
-      programaciones: this.programacionService.listar(),
-      pedidos: this.pedidoService.listar(),
-      clientes: this.clienteService.listar(),
-      conductores: this.programacionService.listarConductores(),
-      tractos: this.programacionService.listarTractos(),
-      semirremolques: this.programacionService.listarSemirremolques()
-    }).subscribe({
-      next: data => {
-        this.programaciones = [...data.programaciones].sort((a, b) => b.id - a.id);
-        this.pedidos = data.pedidos;
-        this.clientes = data.clientes;
-        this.conductores = data.conductores;
-        this.tractos = data.tractos;
-        this.semirremolques = data.semirremolques;
+    // La tabla principal no debe esperar a cinco microservicios auxiliares.
+    // Mostramos las programaciones apenas responde programacion-service y
+    // enriquecemos clientes, pedidos y recursos en segundo plano.
+    this.programacionService.listar().subscribe({
+      next: programaciones => {
+        this.programaciones = [...programaciones].sort((a, b) => b.id - a.id);
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(
           error,
-          'No se pudo cargar Programación. Verifica pedido-service, cliente-service, conductor-service, flota-service y programacion-service.'
+          'No se pudo cargar la lista de programaciones. Verifica programacion-service.'
         );
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
+
+    this.cargarCatalogosEnSegundoPlano();
   }
 
   abrirNueva(): void {
@@ -233,6 +233,7 @@ export class Programacion implements OnInit {
     this.error = '';
     this.mensaje = '';
 
+    const esNueva = this.programacionEditandoId === null;
     const payload: ProgramacionForm = {
       pedidoId: Number(this.formulario.pedidoId),
       conductorId: Number(this.formulario.conductorId),
@@ -240,12 +241,12 @@ export class Programacion implements OnInit {
       semirremolqueId: Number(this.formulario.semirremolqueId),
       fechaProgramada: this.formulario.fechaProgramada,
       observacion: this.formulario.observacion.trim(),
-      estado: this.programacionEditandoId === null ? null : this.formulario.estado
+      estado: esNueva ? null : this.formulario.estado
     };
 
-    const operacion = this.programacionEditandoId === null
+    const operacion = esNueva
       ? this.programacionService.crear(payload)
-      : this.programacionService.actualizar(this.programacionEditandoId, payload);
+      : this.programacionService.actualizar(this.programacionEditandoId!, payload);
 
     operacion
       .pipe(
@@ -256,12 +257,17 @@ export class Programacion implements OnInit {
       )
       .subscribe({
         next: programacion => {
-          this.mensaje = this.programacionEditandoId === null
+          this.mensaje = esNueva
             ? `Programación #PROG-${this.codigo(programacion.id)} creada correctamente.`
             : `Programación #PROG-${this.codigo(programacion.id)} actualizada correctamente.`;
+
+          this.aplicarProgramacionLocal(programacion, esNueva);
           this.mostrarFormulario = false;
           this.programacionEditandoId = null;
           this.formulario = this.formularioVacio();
+          this.cdr.detectChanges();
+
+          // Sin bloquear la pantalla, reconciliamos con los microservicios.
           this.cargarDatos();
         },
         error: error => {
@@ -297,8 +303,9 @@ export class Programacion implements OnInit {
     this.mensaje = '';
 
     this.programacionService.actualizar(programacion.id, payload).subscribe({
-      next: () => {
+      next: actualizada => {
         this.mensaje = 'Programación cancelada y recursos liberados correctamente.';
+        this.aplicarProgramacionLocal(actualizada, false);
         this.cargarDatos();
       },
       error: error => {
@@ -324,6 +331,8 @@ export class Programacion implements OnInit {
     this.programacionService.eliminar(programacion.id).subscribe({
       next: () => {
         this.mensaje = 'Programación eliminada correctamente.';
+        this.programaciones = this.programaciones.filter(item => item.id !== programacion.id);
+        this.cdr.detectChanges();
         this.cargarDatos();
       },
       error: error => {
@@ -392,6 +401,72 @@ export class Programacion implements OnInit {
 
   codigoPedido(id: number): string {
     return `PED-${id.toString().padStart(4, '0')}`;
+  }
+
+  private cargarCatalogosEnSegundoPlano(): void {
+    forkJoin({
+      pedidos: this.pedidoService.listar(),
+      clientes: this.clienteService.listar(),
+      conductores: this.programacionService.listarConductores(),
+      tractos: this.programacionService.listarTractos(),
+      semirremolques: this.programacionService.listarSemirremolques()
+    }).subscribe({
+      next: data => {
+        this.pedidos = data.pedidos;
+        this.clientes = data.clientes;
+        this.conductores = data.conductores;
+        this.tractos = data.tractos;
+        this.semirremolques = data.semirremolques;
+        this.cdr.detectChanges();
+      },
+      error: error => {
+        if (!this.error) {
+          this.error = this.obtenerMensajeError(
+            error,
+            'Las programaciones cargaron, pero algunos datos auxiliares aún no están disponibles.'
+          );
+        }
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private aplicarProgramacionLocal(programacion: ProgramacionModel, esNueva: boolean): void {
+    const indice = this.programaciones.findIndex(item => item.id === programacion.id);
+
+    if (indice >= 0) {
+      this.programaciones = this.programaciones.map(item =>
+        item.id === programacion.id ? programacion : item
+      );
+    } else {
+      this.programaciones = [programacion, ...this.programaciones];
+    }
+
+    if (esNueva && programacion.estado === 'PROGRAMADA') {
+      this.pedidos = this.pedidos.map(pedido =>
+        pedido.id === programacion.pedidoId
+          ? { ...pedido, estado: 'PROGRAMADO' }
+          : pedido
+      );
+
+      this.conductores = this.conductores.map(conductor =>
+        conductor.id === programacion.conductorId
+          ? { ...conductor, disponible: false }
+          : conductor
+      );
+
+      this.tractos = this.tractos.map(tracto =>
+        tracto.id === programacion.tractoId
+          ? { ...tracto, estado: 'ASIGNADO' }
+          : tracto
+      );
+
+      this.semirremolques = this.semirremolques.map(semirremolque =>
+        semirremolque.id === programacion.semirremolqueId
+          ? { ...semirremolque, estado: 'ASIGNADO' }
+          : semirremolque
+      );
+    }
   }
 
   private validarDisponibilidadActual(): string | null {
