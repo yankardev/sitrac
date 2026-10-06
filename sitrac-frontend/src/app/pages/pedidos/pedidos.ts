@@ -13,6 +13,7 @@ import {
 } from '../../core/models/pedido.model';
 import { ClienteService } from '../../core/services/cliente.service';
 import { PedidoService } from '../../core/services/pedido.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-pedidos',
@@ -99,36 +100,35 @@ export class Pedidos implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
+    const primeraCarga = this.pedidos.length === 0;
+    if (primeraCarga) {
+      this.cargando = true;
+    }
     this.error = '';
 
-    this.clienteService.listar().subscribe({
-      next: clientes => {
-        this.clientes = clientes;
-
-        this.pedidoService.listar().subscribe({
-          next: pedidos => {
-            this.pedidos = [...pedidos].sort((a, b) => b.id - a.id);
-            this.cargando = false;
-            this.cdr.detectChanges();
-          },
-          error: error => {
-            this.error = this.obtenerMensajeError(
-              error,
-              'No se pudo cargar la lista de pedidos. Verifica que pedido-service esté ejecutándose.'
-            );
-            this.cargando = false;
-            this.cdr.detectChanges();
-          }
-        });
+    this.pedidoService.listar().subscribe({
+      next: pedidos => {
+        this.pedidos = [...pedidos].sort((a, b) => b.id - a.id);
+        this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(
           error,
-          'No se pudieron cargar los clientes. Verifica que cliente-service esté ejecutándose.'
+          'No se pudo cargar la lista de pedidos. Verifica que pedido-service esté ejecutándose.'
         );
         this.cargando = false;
         this.cdr.detectChanges();
+      }
+    });
+
+    this.clienteService.listar().subscribe({
+      next: clientes => {
+        this.clientes = clientes;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // Los pedidos pueden mostrarse aunque el catálogo de clientes tarde más.
       }
     });
   }
@@ -188,6 +188,7 @@ export class Pedidos implements OnInit {
     this.error = '';
     this.mensaje = '';
 
+    const esNuevo = this.pedidoEditandoId === null;
     const payload: PedidoForm = {
       clienteId: Number(this.formulario.clienteId),
       tipoCarga: this.formulario.tipoCarga,
@@ -196,12 +197,12 @@ export class Pedidos implements OnInit {
       origen: this.formulario.origen.trim(),
       destino: this.formulario.destino.trim(),
       fechaSolicitud: this.formulario.fechaSolicitud,
-      estado: this.pedidoEditandoId === null ? null : this.formulario.estado
+      estado: esNuevo ? null : this.formulario.estado
     };
 
-    const operacion = this.pedidoEditandoId === null
+    const operacion = esNuevo
       ? this.pedidoService.crear(payload)
-      : this.pedidoService.actualizar(this.pedidoEditandoId, payload);
+      : this.pedidoService.actualizar(this.pedidoEditandoId!, payload);
 
     operacion
       .pipe(
@@ -212,14 +213,19 @@ export class Pedidos implements OnInit {
       )
       .subscribe({
         next: pedido => {
-          this.mensaje = this.pedidoEditandoId === null
+          this.mensaje = esNuevo
             ? `Pedido #PED-${this.codigoPedido(pedido.id)} registrado correctamente.`
             : `Pedido #PED-${this.codigoPedido(pedido.id)} actualizado correctamente.`;
+
+          const existe = this.pedidos.some(x => x.id === pedido.id);
+          this.pedidos = existe
+            ? this.pedidos.map(x => x.id === pedido.id ? pedido : x)
+            : [pedido, ...this.pedidos];
 
           this.mostrarFormulario = false;
           this.pedidoEditandoId = null;
           this.formulario = this.formularioVacio();
-          this.cargarDatos();
+          this.cdr.detectChanges();
         },
         error: error => {
           this.error = this.obtenerMensajeError(error, 'No se pudo guardar el pedido.');
@@ -228,8 +234,9 @@ export class Pedidos implements OnInit {
   }
 
   eliminar(pedido: Pedido): void {
-    const confirmado = window.confirm(
-      `¿Eliminar el pedido #PED-${this.codigoPedido(pedido.id)}?`
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar el pedido #PED-${this.codigoPedido(pedido.id)}.`,
+      `CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente el pedido #PED-${this.codigoPedido(pedido.id)}?`
     );
 
     if (!confirmado) {
@@ -241,8 +248,9 @@ export class Pedidos implements OnInit {
 
     this.pedidoService.eliminar(pedido.id).subscribe({
       next: () => {
+        this.pedidos = this.pedidos.filter(x => x.id !== pedido.id);
         this.mensaje = 'Pedido eliminado correctamente.';
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el pedido.');
