@@ -75,6 +75,7 @@
       <select class="state-filter" [(ngModel)]="filtroEstado">
         <option value="TODOS">Todos los estados</option>
         <option value="PROGRAMADA">Programada</option>
+        <option value="FINALIZADA">Finalizada</option>
         <option value="CANCELADA">Cancelada</option>
       </select>
     </div>
@@ -137,7 +138,11 @@
           </td>
 
           <td>
-            <span class="status" [class.programmed]="programacion.estado === 'PROGRAMADA'" [class.cancelled]="programacion.estado === 'CANCELADA'">
+            <span
+              class="status"
+              [class.programmed]="programacion.estado === 'PROGRAMADA'"
+              [class.finalized]="programacion.estado === 'FINALIZADA'"
+              [class.cancelled]="programacion.estado === 'CANCELADA'">
               <i></i>
               {{ programacion.estado }}
             </span>
@@ -146,6 +151,7 @@
           <td class="actions-column">
             <div class="row-actions">
               <button
+                *ngIf="programacion.estado === 'PROGRAMADA'"
                 class="icon-button edit"
                 type="button"
                 title="Editar fecha u observación"
