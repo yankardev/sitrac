@@ -14,12 +14,26 @@ interface CacheEntry {
 const CACHE_TTL_MS = 5 * 60_000;
 const cache = new Map<string, CacheEntry>();
 const inFlight = new Map<string, Observable<HttpEvent<unknown>>>();
+let refreshScheduled = false;
 
 function refrescarVista(appRef: ApplicationRef): void {
-  // Angular 22 funciona sin Zone.js por defecto. Después de una respuesta HTTP
-  // forzamos un ciclo de render en el siguiente microtask para que loaders,
-  // tablas, modales y mensajes se actualicen de inmediato.
-  queueMicrotask(() => appRef.tick());
+  if (refreshScheduled) {
+    return;
+  }
+
+  refreshScheduled = true;
+
+  // En Angular 22 sin Zone.js, algunos cambios hechos dentro de callbacks HTTP
+  // pueden quedar pendientes visualmente (por ejemplo, botones en "Guardando...").
+  // Ejecutamos el refresco en el siguiente macrotask, cuando el callback del
+  // componente ya terminó de actualizar sus variables locales.
+  setTimeout(() => {
+    refreshScheduled = false;
+
+    if (!appRef.destroyed) {
+      appRef.tick();
+    }
+  }, 0);
 }
 
 export const cacheGetInterceptor: HttpInterceptorFn = (req, next) => {
@@ -32,6 +46,14 @@ export const cacheGetInterceptor: HttpInterceptorFn = (req, next) => {
     inFlight.clear();
 
     return next(req).pipe(
+      tap({
+        next: event => {
+          if (event instanceof HttpResponse) {
+            refrescarVista(appRef);
+          }
+        },
+        error: () => refrescarVista(appRef)
+      }),
       finalize(() => refrescarVista(appRef))
     );
   }
