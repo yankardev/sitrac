@@ -66,9 +66,24 @@ public class ViajeService implements ViajeUseCase {
         validarKilometraje(viaje);
         validarDatosPorEstado(nuevoEstado, viaje);
 
-        if (actual.getEstado() == EstadoViaje.PROGRAMADO
+        boolean cambioEstado = actual.getEstado() != nuevoEstado;
+
+        if (cambioEstado
+                && actual.getEstado() == EstadoViaje.PROGRAMADO
                 && nuevoEstado == EstadoViaje.EN_VIAJE) {
             validarCharlaSommaCerrada(actual.getProgramacionId());
+            programacionConsulta.iniciarViaje(actual.getProgramacionId());
+        }
+
+        if (cambioEstado && nuevoEstado == EstadoViaje.FINALIZADO) {
+            programacionConsulta.finalizarViaje(actual.getProgramacionId());
+        }
+
+        if (cambioEstado && nuevoEstado == EstadoViaje.CANCELADO) {
+            programacionConsulta.cancelarViaje(
+                    actual.getProgramacionId(),
+                    actual.getEstado() == EstadoViaje.EN_VIAJE
+            );
         }
 
         return repo.guardar(Viaje.builder()
