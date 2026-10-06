@@ -5,6 +5,7 @@ import { finalize } from 'rxjs';
 
 import { Conductor, ConductorForm } from '../../core/models/conductor.model';
 import { ConductorService } from '../../core/services/conductor.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-conductores',
@@ -80,6 +81,7 @@ export class Conductores implements OnInit {
       next: conductores => {
         this.conductores = [...conductores].sort((a, b) => b.id - a.id);
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(
@@ -87,6 +89,7 @@ export class Conductores implements OnInit {
           'No se pudo cargar la lista de conductores. Verifica que conductor-service esté ejecutándose.'
         );
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -169,10 +172,15 @@ export class Conductores implements OnInit {
             ? `Conductor ${conductor.nombres} ${conductor.apellidos} registrado correctamente.`
             : `Conductor ${conductor.nombres} ${conductor.apellidos} actualizado correctamente.`;
 
+          const existe = this.conductores.some(x => x.id === conductor.id);
+          this.conductores = existe
+            ? this.conductores.map(x => x.id === conductor.id ? conductor : x)
+            : [conductor, ...this.conductores];
+
           this.mostrarFormulario = false;
           this.conductorEditandoId = null;
           this.formulario = this.formularioVacio();
-          this.cargarConductores();
+          this.cdr.detectChanges();
         },
         error: error => {
           this.error = this.obtenerMensajeError(error, 'No se pudo guardar el conductor.');
@@ -191,10 +199,11 @@ export class Conductores implements OnInit {
 
     this.conductorService.cambiarDisponibilidad(conductor.id, !conductor.disponible).subscribe({
       next: actualizado => {
+        this.conductores = this.conductores.map(x => x.id === actualizado.id ? actualizado : x);
         this.mensaje = actualizado.disponible
           ? 'Conductor marcado como disponible.'
           : 'Conductor marcado como no disponible.';
-        this.cargarConductores();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo cambiar la disponibilidad.');
@@ -203,8 +212,9 @@ export class Conductores implements OnInit {
   }
 
   eliminar(conductor: Conductor): void {
-    const confirmado = window.confirm(
-      `¿Eliminar al conductor "${conductor.nombres} ${conductor.apellidos}"?`
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar al conductor "${conductor.nombres} ${conductor.apellidos}".`,
+      `CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente a "${conductor.nombres} ${conductor.apellidos}"?`
     );
 
     if (!confirmado) {
@@ -216,8 +226,9 @@ export class Conductores implements OnInit {
 
     this.conductorService.eliminar(conductor.id).subscribe({
       next: () => {
+        this.conductores = this.conductores.filter(x => x.id !== conductor.id);
         this.mensaje = 'Conductor eliminado correctamente.';
-        this.cargarConductores();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el conductor.');
