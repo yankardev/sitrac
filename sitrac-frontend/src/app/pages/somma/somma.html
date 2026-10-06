@@ -284,13 +284,16 @@
         </label>
 
         <label class="field full">
-          <span>Lugar</span>
-          <input
-            name="lugar"
-            type="text"
-            [(ngModel)]="formulario.lugar"
-            maxlength="150"
-            placeholder="Ej. Base Trujillo / Patio de operaciones" />
+          <span>Base / lugar *</span>
+          <select name="lugar" [(ngModel)]="formulario.lugar" required>
+            <option value="" disabled>Selecciona una base o patio</option>
+            <option *ngFor="let lugar of lugaresOperacion" [value]="lugar">{{ lugar }}</option>
+            <option
+              *ngIf="formulario.lugar && !lugaresOperacion.includes(formulario.lugar)"
+              [value]="formulario.lugar">
+              {{ formulario.lugar }}
+            </option>
+          </select>
         </label>
 
         <div class="state-readonly full" *ngIf="registroEditandoId !== null">
