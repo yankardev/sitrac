@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 import { ConductorOperacion, Programacion } from '../../core/models/programacion.model';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../../core/models/somma.model';
 import { ProgramacionService } from '../../core/services/programacion.service';
 import { SommaService } from '../../core/services/somma.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-somma',
@@ -22,6 +23,19 @@ import { SommaService } from '../../core/services/somma.service';
 export class Somma implements OnInit {
   private readonly sommaService = inject(SommaService);
   private readonly programacionService = inject(ProgramacionService);
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  readonly lugaresOperacion: string[] = [
+    'Base Trujillo',
+    'Base Lima',
+    'Base Cajamarca',
+    'Base Pacasmayo',
+    'Base Chiclayo',
+    'Base Piura',
+    'Base Chimbote',
+    'Patio de Operaciones Trujillo',
+    'Patio de Operaciones Lima'
+  ];
 
   registros: RegistroSomma[] = [];
   programaciones: Programacion[] = [];
@@ -91,28 +105,29 @@ export class Somma implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
+    const primeraCarga = this.registros.length === 0;
+    if (primeraCarga) {
+      this.cargando = true;
+    }
     this.error = '';
 
-    forkJoin({
-      registros: this.sommaService.listar(),
-      programaciones: this.programacionService.listar(),
-      conductores: this.programacionService.listarConductores()
-    }).subscribe({
-      next: data => {
-        this.registros = [...data.registros].sort((a, b) => b.id - a.id);
-        this.programaciones = data.programaciones;
-        this.conductores = data.conductores;
+    this.sommaService.listar().subscribe({
+      next: registros => {
+        this.registros = [...registros].sort((a, b) => b.id - a.id);
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(
           error,
-          'No se pudo cargar SOMMA. Verifica somma-service, programacion-service y conductor-service.'
+          'No se pudo cargar SOMMA. Verifica somma-service.'
         );
         this.cargando = false;
+        this.cdr.detectChanges();
       }
     });
+
+    this.cargarCatalogosEnSegundoPlano();
   }
 
   abrirNuevo(tipo: TipoRegistroSomma = 'CHARLA'): void {
@@ -187,6 +202,7 @@ export class Somma implements OnInit {
     this.error = '';
     this.mensaje = '';
 
+    const esNuevo = this.registroEditandoId === null;
     const payload: RegistroSommaForm = {
       tipo: this.formulario.tipo,
       programacionId: this.formulario.programacionId === null
@@ -199,29 +215,35 @@ export class Somma implements OnInit {
       titulo: this.formulario.titulo.trim(),
       descripcion: this.formulario.descripcion.trim(),
       lugar: this.formulario.lugar.trim(),
-      estado: this.registroEditandoId === null ? null : this.formulario.estado
+      estado: esNuevo ? null : this.formulario.estado
     };
 
-    const operacion = this.registroEditandoId === null
+    const operacion = esNuevo
       ? this.sommaService.crear(payload)
-      : this.sommaService.actualizar(this.registroEditandoId, payload);
+      : this.sommaService.actualizar(this.registroEditandoId!, payload);
 
-    operacion.subscribe({
-      next: registro => {
-        this.mensaje = this.registroEditandoId === null
-          ? `Registro SOMMA #${this.codigo(registro.id)} creado correctamente.`
-          : `Registro SOMMA #${this.codigo(registro.id)} actualizado correctamente.`;
-        this.guardando = false;
-        this.mostrarFormulario = false;
-        this.registroEditandoId = null;
-        this.formulario = this.formularioVacio();
-        this.cargarDatos();
-      },
-      error: error => {
-        this.error = this.obtenerMensajeError(error, 'No se pudo guardar el registro SOMMA.');
-        this.guardando = false;
-      }
-    });
+    operacion
+      .pipe(
+        finalize(() => {
+          this.guardando = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: registro => {
+          this.mensaje = esNuevo
+            ? `Registro SOMMA #${this.codigo(registro.id)} creado correctamente.`
+            : `Registro SOMMA #${this.codigo(registro.id)} actualizado correctamente.`;
+          this.aplicarLocal(registro);
+          this.mostrarFormulario = false;
+          this.registroEditandoId = null;
+          this.formulario = this.formularioVacio();
+          this.cdr.detectChanges();
+        },
+        error: error => {
+          this.error = this.obtenerMensajeError(error, 'No se pudo guardar el registro SOMMA.');
+        }
+      });
   }
 
   cambiarEstado(registro: RegistroSomma, estado: EstadoRegistroSomma): void {
@@ -246,11 +268,12 @@ export class Somma implements OnInit {
     };
 
     this.sommaService.actualizar(registro.id, payload).subscribe({
-      next: () => {
+      next: actualizado => {
         this.mensaje = estado === 'CERRADO'
           ? 'Registro SOMMA cerrado correctamente.'
           : 'Registro SOMMA cancelado correctamente.';
-        this.cargarDatos();
+        this.aplicarLocal(actualizado);
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo actualizar el estado del registro.');
@@ -264,14 +287,20 @@ export class Somma implements OnInit {
       return;
     }
 
-    if (!window.confirm(`¿Eliminar el registro SOMMA #${this.codigo(registro.id)}?`)) {
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar el registro SOMMA #${this.codigo(registro.id)}.`,
+      'CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente este registro SOMMA?'
+    );
+
+    if (!confirmado) {
       return;
     }
 
     this.sommaService.eliminar(registro.id).subscribe({
       next: () => {
+        this.registros = this.registros.filter(x => x.id !== registro.id);
         this.mensaje = 'Registro SOMMA eliminado correctamente.';
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el registro SOMMA.');
@@ -314,6 +343,29 @@ export class Somma implements OnInit {
 
   codigo(id: number): string {
     return id.toString().padStart(4, '0');
+  }
+
+  private cargarCatalogosEnSegundoPlano(): void {
+    forkJoin({
+      programaciones: this.programacionService.listar(),
+      conductores: this.programacionService.listarConductores()
+    }).subscribe({
+      next: data => {
+        this.programaciones = data.programaciones;
+        this.conductores = data.conductores;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // La lista principal de SOMMA permanece visible aunque un catálogo demore.
+      }
+    });
+  }
+
+  private aplicarLocal(registro: RegistroSomma): void {
+    const existe = this.registros.some(x => x.id === registro.id);
+    this.registros = existe
+      ? this.registros.map(x => x.id === registro.id ? registro : x)
+      : [registro, ...this.registros];
   }
 
   private formularioVacio(): RegistroSommaForm {
