@@ -111,7 +111,14 @@ public class ConductorService implements ConductorUseCase {
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Conductor actual = obtenerPorId(id);
+
+        if (!actual.isDisponible()) {
+            throw new ReglaNegocioException(
+                    "No se puede eliminar un conductor asignado a una programación activa"
+            );
+        }
+
         conductorRepositoryPort.eliminarPorId(id);
     }
 }

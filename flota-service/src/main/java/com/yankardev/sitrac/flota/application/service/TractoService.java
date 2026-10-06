@@ -83,7 +83,14 @@ public class TractoService implements TractoUseCase {
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Tracto actual = obtenerPorId(id);
+
+        if (actual.getEstado() != EstadoUnidad.DISPONIBLE) {
+            throw new ReglaNegocioException(
+                    "Solo se puede eliminar un tracto disponible; no elimine unidades asignadas o en mantenimiento"
+            );
+        }
+
         repo.eliminarPorId(id);
     }
 }

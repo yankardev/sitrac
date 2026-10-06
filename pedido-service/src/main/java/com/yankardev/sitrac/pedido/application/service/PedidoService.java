@@ -90,7 +90,15 @@ public class PedidoService implements PedidoUseCase {
 
     @Override
     public void eliminar(Long id) {
-        obtenerPorId(id);
+        Pedido actual = obtenerPorId(id);
+
+        if (actual.getEstado() != EstadoPedido.REGISTRADO
+                && actual.getEstado() != EstadoPedido.CANCELADO) {
+            throw new ReglaNegocioException(
+                    "No se puede eliminar un pedido que ya forma parte del flujo operativo; solo se permite eliminar pedidos REGISTRADOS o CANCELADOS"
+            );
+        }
+
         repository.eliminarPorId(id);
     }
 

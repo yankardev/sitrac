@@ -52,11 +52,31 @@ public class MantenimientoService implements MantenimientoUseCase {
     public Mantenimiento actualizar(Long id, Mantenimiento mantenimiento) {
         Mantenimiento actual = obtenerPorId(id);
         validar(mantenimiento);
-        validarUnidad(mantenimiento.getTipoUnidad(), mantenimiento.getUnidadId());
+        FlotaConsultaPort.UnidadFlota unidad = validarUnidad(
+                mantenimiento.getTipoUnidad(),
+                mantenimiento.getUnidadId()
+        );
 
         EstadoMantenimiento nuevoEstado = mantenimiento.getEstado() == null
                 ? actual.getEstado()
                 : mantenimiento.getEstado();
+
+        boolean cambioUnidad = actual.getTipoUnidad() != mantenimiento.getTipoUnidad()
+                || !actual.getUnidadId().equals(mantenimiento.getUnidadId());
+
+        if (actual.getEstado() == EstadoMantenimiento.EN_PROCESO && cambioUnidad) {
+            throw new ReglaNegocioException(
+                    "No se puede cambiar la unidad de un mantenimiento que ya está EN_PROCESO"
+            );
+        }
+
+        if (actual.getEstado() != EstadoMantenimiento.EN_PROCESO
+                && nuevoEstado == EstadoMantenimiento.EN_PROCESO
+                && !"DISPONIBLE".equals(unidad.estado())) {
+            throw new ReglaNegocioException(
+                    "La unidad debe estar DISPONIBLE antes de iniciar el mantenimiento"
+            );
+        }
 
         Mantenimiento actualizado = repo.guardar(Mantenimiento.builder()
                 .id(actual.getId())
@@ -113,7 +133,7 @@ public class MantenimientoService implements MantenimientoUseCase {
         }
     }
 
-    private void validarUnidad(TipoUnidad tipoUnidad, Long unidadId) {
+    private FlotaConsultaPort.UnidadFlota validarUnidad(TipoUnidad tipoUnidad, Long unidadId) {
         FlotaConsultaPort.UnidadFlota unidad = flotaConsulta.buscarUnidad(tipoUnidad, unidadId)
                 .orElseThrow(() -> new ReglaNegocioException(
                         tipoUnidad == TipoUnidad.TRACTO
@@ -123,5 +143,7 @@ public class MantenimientoService implements MantenimientoUseCase {
         if (!unidad.activo() || "INACTIVO".equals(unidad.estado())) {
             throw new ReglaNegocioException("La unidad de flota se encuentra inactiva");
         }
+
+        return unidad;
     }
 }
