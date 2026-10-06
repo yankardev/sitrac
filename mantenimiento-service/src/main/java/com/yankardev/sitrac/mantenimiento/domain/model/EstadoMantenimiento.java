@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.mantenimiento.domain.model;public enum EstadoMantenimiento{PROGRAMADO,EN_PROCESO,FINALIZADO,CANCELADO}

@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.viaje.application.exception; public class ReglaNegocioException extends RuntimeException{public ReglaNegocioException(String m){super(m);}}

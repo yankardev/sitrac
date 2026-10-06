@@ -1,0 +1,356 @@
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Operaciones / Programación</span>
+    <h1>Programación de viajes</h1>
+    <p>Asigna pedidos, conductores y unidades disponibles para ejecutar el servicio.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNueva()">
+    <span>+</span>
+    Nueva programación
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">◉</div>
+    <div>
+      <span>Total</span>
+      <strong>{{ programaciones.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Programadas</span>
+      <strong>{{ totalActivas }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon red">×</div>
+    <div>
+      <span>Canceladas</span>
+      <strong>{{ totalCanceladas }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">▰</div>
+    <div>
+      <span>Tractos disponibles</span>
+      <strong>{{ tractosDisponibles.length }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Programaciones registradas</h2>
+      <p>Asignaciones operativas de pedidos y recursos</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar pedido, cliente, conductor o placa"
+        />
+      </label>
+
+      <select class="state-filter" [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="PROGRAMADA">Programada</option>
+        <option value="FINALIZADA">Finalizada</option>
+        <option value="CANCELADA">Cancelada</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando programación...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && programacionesFiltradas.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Programación</th>
+          <th>Pedido</th>
+          <th>Conductor</th>
+          <th>Tracto</th>
+          <th>Semirremolque</th>
+          <th>Fecha programada</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let programacion of programacionesFiltradas">
+          <td>
+            <strong class="program-code">#PROG-{{ codigo(programacion.id) }}</strong>
+            <span class="secondary">ID {{ programacion.id }}</span>
+          </td>
+
+          <td>
+            <strong>#{{ codigoPedido(programacion.pedidoId) }}</strong>
+            <span class="secondary" *ngIf="pedidoPorId(programacion.pedidoId) as pedido">
+              {{ nombreCliente(pedido.clienteId) }}
+            </span>
+            <span class="secondary" *ngIf="pedidoPorId(programacion.pedidoId) as pedido">
+              {{ pedido.origen }} → {{ pedido.destino }} · {{ pedido.toneladas }} TM
+            </span>
+          </td>
+
+          <td>
+            <strong>{{ conductorNombre(programacion.conductorId) }}</strong>
+            <span class="secondary">Conductor #{{ programacion.conductorId }}</span>
+          </td>
+
+          <td>
+            <span class="unit-badge">{{ tractoPlaca(programacion.tractoId) }}</span>
+          </td>
+
+          <td>
+            <span class="unit-badge secondary-unit">{{ semirremolquePlaca(programacion.semirremolqueId) }}</span>
+            <span class="secondary">{{ semirremolqueTipo(programacion.semirremolqueId) }}</span>
+          </td>
+
+          <td>
+            <strong>{{ programacion.fechaProgramada | date:'dd/MM/yyyy':'UTC' }}</strong>
+            <span class="secondary">{{ programacion.fechaProgramada | date:'HH:mm':'UTC' }}</span>
+          </td>
+
+          <td>
+            <span
+              class="status"
+              [class.programmed]="programacion.estado === 'PROGRAMADA'"
+              [class.finalized]="programacion.estado === 'FINALIZADA'"
+              [class.cancelled]="programacion.estado === 'CANCELADA'">
+              <i></i>
+              {{ programacion.estado }}
+            </span>
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <button
+                *ngIf="programacion.estado === 'PROGRAMADA'"
+                class="icon-button edit"
+                type="button"
+                title="Editar fecha u observación"
+                (click)="editar(programacion)">
+                ✎
+              </button>
+
+              <button
+                *ngIf="programacion.estado === 'PROGRAMADA'"
+                class="icon-button cancel"
+                type="button"
+                title="Cancelar programación"
+                (click)="cancelar(programacion)">
+                ×
+              </button>
+
+              <button
+                *ngIf="programacion.estado === 'CANCELADA'"
+                class="icon-button delete"
+                type="button"
+                title="Eliminar programación"
+                (click)="eliminar(programacion)">
+                🗑
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && programacionesFiltradas.length === 0">
+    <div class="empty-icon">◉</div>
+    <h3>No hay programaciones para mostrar</h3>
+    <p *ngIf="busqueda || filtroEstado !== 'TODOS'">No encontramos resultados con los filtros seleccionados.</p>
+    <p *ngIf="!busqueda && filtroEstado === 'TODOS'">Crea la primera asignación operativa.</p>
+    <button type="button" (click)="abrirNueva()">+ Nueva programación</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ programacionEditandoId === null ? 'NUEVA ASIGNACIÓN' : 'EDITAR PROGRAMACIÓN' }}</span>
+        <h2>{{ programacionEditandoId === null ? 'Programar servicio' : 'Actualizar programación' }}</h2>
+        <p>
+          {{ programacionEditandoId === null
+            ? 'Selecciona recursos disponibles y compatibles con la carga.'
+            : 'La asignación de recursos queda bloqueada; puedes modificar fecha y observación.' }}
+        </p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #programacionForm="ngForm" (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <label class="field full">
+          <span>Pedido *</span>
+          <select
+            name="pedidoId"
+            [(ngModel)]="formulario.pedidoId"
+            (ngModelChange)="alCambiarPedido()"
+            [disabled]="programacionEditandoId !== null"
+            required>
+            <option [ngValue]="null" disabled>Selecciona un pedido registrado</option>
+            <option *ngFor="let pedido of pedidosDisponibles" [ngValue]="pedido.id">
+              #{{ codigoPedido(pedido.id) }} · {{ nombreCliente(pedido.clienteId) }} · {{ pedido.origen }} → {{ pedido.destino }} · {{ pedido.toneladas }} TM
+            </option>
+            <option
+              *ngIf="programacionEditandoId !== null && formulario.pedidoId !== null"
+              [ngValue]="formulario.pedidoId">
+              #{{ codigoPedido(formulario.pedidoId) }} · asignación actual
+            </option>
+          </select>
+        </label>
+
+        <div class="cargo-rule full" *ngIf="pedidoSeleccionado() as pedido">
+          <div>
+            <span>Cliente</span>
+            <strong>{{ nombreCliente(pedido.clienteId) }}</strong>
+          </div>
+          <div>
+            <span>Ruta</span>
+            <strong>{{ pedido.origen }} → {{ pedido.destino }}</strong>
+          </div>
+          <div>
+            <span>Tonelaje</span>
+            <strong>{{ pedido.toneladas }} TM</strong>
+          </div>
+          <div>
+            <span>Semirremolque requerido</span>
+            <strong>{{ etiquetaTipoSemirremolque(tipoSemirremolqueRequerido(pedido.tipoCarga)) }}</strong>
+          </div>
+        </div>
+
+        <label class="field full">
+          <span>Conductor *</span>
+          <select
+            name="conductorId"
+            [(ngModel)]="formulario.conductorId"
+            [disabled]="programacionEditandoId !== null"
+            required>
+            <option [ngValue]="null" disabled>Selecciona un conductor disponible</option>
+            <option *ngFor="let conductor of conductoresDisponibles" [ngValue]="conductor.id">
+              {{ conductor.nombres }} {{ conductor.apellidos }} · Lic. {{ conductor.numeroLicencia }}
+            </option>
+            <option
+              *ngIf="programacionEditandoId !== null && formulario.conductorId !== null"
+              [ngValue]="formulario.conductorId">
+              {{ conductorNombre(formulario.conductorId) }} · asignación actual
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Tracto *</span>
+          <select
+            name="tractoId"
+            [(ngModel)]="formulario.tractoId"
+            [disabled]="programacionEditandoId !== null"
+            required>
+            <option [ngValue]="null" disabled>Selecciona tracto disponible</option>
+            <option *ngFor="let tracto of tractosDisponibles" [ngValue]="tracto.id">
+              {{ tracto.placa }} · {{ tracto.marca }} {{ tracto.modelo }} · {{ tracto.capacidadToneladas }} TM
+            </option>
+            <option
+              *ngIf="programacionEditandoId !== null && formulario.tractoId !== null"
+              [ngValue]="formulario.tractoId">
+              {{ tractoPlaca(formulario.tractoId) }} · asignación actual
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Semirremolque *</span>
+          <select
+            name="semirremolqueId"
+            [(ngModel)]="formulario.semirremolqueId"
+            [disabled]="programacionEditandoId !== null"
+            required>
+            <option [ngValue]="null" disabled>Selecciona semirremolque disponible</option>
+            <option *ngFor="let semi of semirremolquesDisponibles" [ngValue]="semi.id">
+              {{ semi.placa }} · {{ etiquetaTipoSemirremolque(semi.tipo) }} · {{ semi.capacidadToneladas }} TM
+            </option>
+            <option
+              *ngIf="programacionEditandoId !== null && formulario.semirremolqueId !== null"
+              [ngValue]="formulario.semirremolqueId">
+              {{ semirremolquePlaca(formulario.semirremolqueId) }} · asignación actual
+            </option>
+          </select>
+        </label>
+
+        <label class="field full">
+          <span>Fecha y hora programada *</span>
+          <input
+            name="fechaProgramada"
+            type="datetime-local"
+            [(ngModel)]="formulario.fechaProgramada"
+            required
+          />
+        </label>
+
+        <label class="field full">
+          <span>Observación</span>
+          <textarea
+            name="observacion"
+            [(ngModel)]="formulario.observacion"
+            maxlength="300"
+            rows="4"
+            placeholder="Indicaciones de despacho, horarios, restricciones o referencias"></textarea>
+        </label>
+      </div>
+
+      <div class="integration-note" *ngIf="programacionEditandoId === null">
+        <span>✓</span>
+        <div>
+          <strong>Asignación integrada</strong>
+          <p>Al guardar, SITRAC cambia el pedido a PROGRAMADO, reserva al conductor y marca tracto y semirremolque como ASIGNADOS.</p>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <button
+          class="secondary-button"
+          type="button"
+          [disabled]="guardando"
+          (click)="cerrarFormulario()">
+          Cancelar
+        </button>
+
+        <button
+          class="primary-button"
+          type="submit"
+          [disabled]="programacionForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (programacionEditandoId === null ? 'Crear programación' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

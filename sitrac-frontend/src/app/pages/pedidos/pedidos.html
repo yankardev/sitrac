@@ -1,0 +1,333 @@
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Comercial / Pedidos</span>
+    <h1>Gestión de pedidos</h1>
+    <p>Registra solicitudes de transporte y controla su avance operativo.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    <span>+</span>
+    Nuevo pedido
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">▣</div>
+    <div>
+      <span>Total de pedidos</span>
+      <strong>{{ pedidos.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">◫</div>
+    <div>
+      <span>Registrados</span>
+      <strong>{{ totalRegistrados }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Programados</span>
+      <strong>{{ totalProgramados }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon purple">➜</div>
+    <div>
+      <span>En viaje</span>
+      <strong>{{ totalEnViaje }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Solicitudes de transporte</h2>
+      <p>Pedidos registrados y su estado actual</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar pedido, cliente, origen o destino"
+        />
+      </label>
+
+      <select class="state-filter" [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="REGISTRADO">Registrado</option>
+        <option value="PROGRAMADO">Programado</option>
+        <option value="EN_VIAJE">En viaje</option>
+        <option value="FINALIZADO">Finalizado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando pedidos...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && pedidosFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Pedido</th>
+          <th>Cliente</th>
+          <th>Carga</th>
+          <th>Ruta</th>
+          <th>Toneladas</th>
+          <th>Fecha</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let pedido of pedidosFiltrados">
+          <td>
+            <strong class="order-code">#PED-{{ codigoPedido(pedido.id) }}</strong>
+            <span class="secondary">ID {{ pedido.id }}</span>
+          </td>
+
+          <td>
+            <strong class="client-name">{{ nombreCliente(pedido.clienteId) }}</strong>
+            <span class="secondary">Cliente #{{ pedido.clienteId }}</span>
+          </td>
+
+          <td>
+            <span class="cargo-name">{{ etiquetaCarga(pedido.tipoCarga) }}</span>
+            <span class="secondary">{{ recursoSugerido(pedido.tipoCarga) }}</span>
+          </td>
+
+          <td>
+            <div class="route-cell">
+              <span>{{ pedido.origen }}</span>
+              <i>→</i>
+              <span>{{ pedido.destino }}</span>
+            </div>
+          </td>
+
+          <td>
+            <strong>{{ pedido.toneladas | number:'1.0-2' }} TM</strong>
+          </td>
+
+          <td>
+            {{ pedido.fechaSolicitud | date:'dd/MM/yyyy':'UTC' }}
+          </td>
+
+          <td>
+            <span class="status" [ngClass]="claseEstado(pedido.estado)">
+              <i></i>
+              {{ etiquetaEstado(pedido.estado) }}
+            </span>
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <a
+                *ngIf="pedido.estado === 'REGISTRADO'"
+                routerLink="/programacion"
+                class="icon-button schedule"
+                title="Programar pedido">
+                ◉
+              </a>
+
+              <button
+                class="icon-button edit"
+                type="button"
+                title="Editar pedido"
+                (click)="editar(pedido)">
+                ✎
+              </button>
+
+              <button
+                class="icon-button delete"
+                type="button"
+                title="Eliminar pedido"
+                (click)="eliminar(pedido)">
+                ×
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && pedidosFiltrados.length === 0">
+    <div class="empty-icon">◫</div>
+    <h3>No hay pedidos para mostrar</h3>
+    <p *ngIf="busqueda || filtroEstado !== 'TODOS'">
+      No encontramos resultados con los filtros seleccionados.
+    </p>
+    <p *ngIf="!busqueda && filtroEstado === 'TODOS'">
+      Registra la primera solicitud de transporte.
+    </p>
+    <button type="button" (click)="abrirNuevo()">+ Registrar pedido</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ pedidoEditandoId === null ? 'NUEVA SOLICITUD' : 'EDITAR SOLICITUD' }}</span>
+        <h2>{{ pedidoEditandoId === null ? 'Registrar pedido' : 'Actualizar pedido' }}</h2>
+        <p>Define el cliente, la carga y la ruta solicitada.</p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #pedidoForm="ngForm" (ngSubmit)="guardarPedido()">
+      <div class="form-grid">
+        <label class="field full">
+          <span>Cliente *</span>
+          <select name="clienteId" [(ngModel)]="formulario.clienteId" required>
+            <option [ngValue]="null" disabled>Selecciona un cliente</option>
+            <option
+              *ngFor="let cliente of clientes"
+              [ngValue]="cliente.id"
+              [disabled]="!cliente.activo">
+              {{ cliente.nombreRazonSocial }} · {{ cliente.numeroDocumento }}
+              {{ !cliente.activo ? '(INACTIVO)' : '' }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Tipo de carga *</span>
+          <select name="tipoCarga" [(ngModel)]="formulario.tipoCarga" required>
+            <option value="CAL_GRANEL">Cal a granel</option>
+            <option value="CEMENTO_BOLSA">Cemento en bolsa</option>
+            <option value="MAQUINARIA">Maquinaria</option>
+            <option value="CARGA_ANCHA">Carga ancha</option>
+            <option value="ESPECIAL">Carga especial</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Toneladas *</span>
+          <input
+            name="toneladas"
+            type="number"
+            [(ngModel)]="formulario.toneladas"
+            min="0.01"
+            step="0.01"
+            placeholder="35"
+            required
+          />
+        </label>
+
+        <div class="resource-hint full">
+          <span>Semirremolque requerido</span>
+          <strong>{{ recursoSugerido(formulario.tipoCarga) }}</strong>
+          <p>
+            El tipo se determina automáticamente según la carga. La unidad exacta y su placa se seleccionan después en Programación.
+          </p>
+        </div>
+
+        <label class="field full">
+          <span>Descripción de la carga</span>
+          <textarea
+            name="descripcionCarga"
+            [(ngModel)]="formulario.descripcionCarga"
+            maxlength="200"
+            rows="3"
+            placeholder="Detalle adicional de la carga"></textarea>
+        </label>
+
+        <label class="field">
+          <span>Origen *</span>
+          <select name="origen" [(ngModel)]="formulario.origen" required>
+            <option value="" disabled>Selecciona el origen</option>
+            <option
+              *ngIf="formulario.origen && !esPuntoRuta(formulario.origen)"
+              [value]="formulario.origen">
+              {{ formulario.origen }} (registrado)
+            </option>
+            <option
+              *ngFor="let punto of puntosRuta"
+              [value]="punto"
+              [disabled]="punto === formulario.destino">
+              {{ punto }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Destino *</span>
+          <select name="destino" [(ngModel)]="formulario.destino" required>
+            <option value="" disabled>Selecciona el destino</option>
+            <option
+              *ngIf="formulario.destino && !esPuntoRuta(formulario.destino)"
+              [value]="formulario.destino">
+              {{ formulario.destino }} (registrado)
+            </option>
+            <option
+              *ngFor="let punto of puntosRuta"
+              [value]="punto"
+              [disabled]="punto === formulario.origen">
+              {{ punto }}
+            </option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Fecha de solicitud *</span>
+          <input
+            name="fechaSolicitud"
+            type="date"
+            [(ngModel)]="formulario.fechaSolicitud"
+            required
+          />
+        </label>
+
+        <div class="state-readonly" *ngIf="pedidoEditandoId !== null">
+          <span>Estado actual</span>
+          <strong>{{ formulario.estado ? etiquetaEstado(formulario.estado) : 'REGISTRADO' }}</strong>
+          <p>El estado operativo se actualiza desde Programación y Viajes.</p>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <button
+          class="secondary-button"
+          type="button"
+          [disabled]="guardando"
+          (click)="cerrarFormulario()">
+          Cancelar
+        </button>
+
+        <button
+          class="primary-button"
+          type="submit"
+          [disabled]="pedidoForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (pedidoEditandoId === null ? 'Registrar pedido' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

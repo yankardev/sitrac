@@ -1,0 +1,3 @@
+package com.yankardev.sitrac.flota.infrastructure.adapter.in.rest.dto;
+import com.yankardev.sitrac.flota.domain.model.EstadoUnidad; import jakarta.validation.constraints.*; import java.math.BigDecimal;
+public record TractoRequest(@NotBlank String placa,@NotBlank String marca,@NotBlank String modelo,@NotNull @Min(1980) @Max(2100) Integer anio,@NotNull @DecimalMin("0.01") BigDecimal capacidadToneladas,EstadoUnidad estado,Boolean activo) {}

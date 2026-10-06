@@ -1,0 +1,271 @@
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Comercial / Clientes</span>
+    <h1>Gestión de clientes</h1>
+    <p>Administra empresas y personas que solicitan servicios de transporte.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    <span>+</span>
+    Nuevo cliente
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">▣</div>
+    <div>
+      <span>Total de clientes</span>
+      <strong>{{ clientes.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Clientes activos</span>
+      <strong>{{ totalActivos }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon gray">–</div>
+    <div>
+      <span>Clientes inactivos</span>
+      <strong>{{ totalInactivos }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Directorio de clientes</h2>
+      <p>Información comercial registrada en SITRAC</p>
+    </div>
+
+    <label class="search-box">
+      <span>⌕</span>
+      <input
+        type="search"
+        [(ngModel)]="busqueda"
+        placeholder="Buscar por cliente, documento o correo"
+      />
+    </label>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando clientes...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && clientesFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Documento</th>
+          <th>Contacto</th>
+          <th>Dirección</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let cliente of clientesFiltrados">
+          <td>
+            <div class="client-cell">
+              <div class="client-avatar">
+                {{ cliente.nombreRazonSocial.charAt(0).toUpperCase() }}
+              </div>
+
+              <div>
+                <strong>{{ cliente.nombreRazonSocial }}</strong>
+                <span>Cliente #{{ cliente.id }}</span>
+              </div>
+            </div>
+          </td>
+
+          <td>
+            <strong class="document-number">{{ cliente.numeroDocumento }}</strong>
+            <span class="secondary">{{ etiquetaDocumento(cliente.tipoDocumento) }}</span>
+          </td>
+
+          <td>
+            <span>{{ cliente.telefono || 'Sin teléfono' }}</span>
+            <span class="secondary">{{ cliente.email || 'Sin correo' }}</span>
+          </td>
+
+          <td>
+            <span class="address">
+              {{ cliente.direccion || 'Sin dirección registrada' }}
+            </span>
+          </td>
+
+          <td>
+            <span class="status" [class.active]="cliente.activo" [class.inactive]="!cliente.activo">
+              <i></i>
+              {{ cliente.activo ? 'ACTIVO' : 'INACTIVO' }}
+            </span>
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <button
+                class="icon-button edit"
+                type="button"
+                title="Editar cliente"
+                (click)="editar(cliente)">
+                ✎
+              </button>
+
+              <button
+                class="icon-button delete"
+                type="button"
+                title="Eliminar cliente"
+                (click)="eliminar(cliente)">
+                ×
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && clientesFiltrados.length === 0">
+    <div class="empty-icon">▣</div>
+    <h3>No hay clientes para mostrar</h3>
+    <p *ngIf="busqueda">No encontramos resultados para “{{ busqueda }}”.</p>
+    <p *ngIf="!busqueda">Registra el primer cliente para comenzar.</p>
+    <button type="button" (click)="abrirNuevo()">+ Registrar cliente</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarFormulario" (click)="cerrarFormulario()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ clienteEditandoId === null ? 'NUEVO REGISTRO' : 'EDITAR REGISTRO' }}</span>
+        <h2>{{ clienteEditandoId === null ? 'Registrar cliente' : 'Actualizar cliente' }}</h2>
+        <p>Completa la información comercial del cliente.</p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarFormulario()">×</button>
+    </div>
+
+    <form #clienteForm="ngForm" (ngSubmit)="guardarCliente()">
+      <div class="form-grid">
+        <label class="field">
+          <span>Tipo de documento *</span>
+          <select name="tipoDocumento" [(ngModel)]="formulario.tipoDocumento" required>
+            <option value="RUC">RUC</option>
+            <option value="DNI">DNI</option>
+            <option value="CE">Carné de extranjería</option>
+            <option value="OTRO">Otro</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Número de documento *</span>
+          <input
+            name="numeroDocumento"
+            type="text"
+            [(ngModel)]="formulario.numeroDocumento"
+            minlength="8"
+            maxlength="20"
+            placeholder="Ej. 20123456789"
+            required
+          />
+        </label>
+
+        <label class="field full">
+          <span>Nombre o razón social *</span>
+          <input
+            name="nombreRazonSocial"
+            type="text"
+            [(ngModel)]="formulario.nombreRazonSocial"
+            minlength="3"
+            maxlength="150"
+            placeholder="Ej. Técnica Avícola S.A."
+            required
+          />
+        </label>
+
+        <label class="field">
+          <span>Teléfono</span>
+          <input
+            name="telefono"
+            type="text"
+            [(ngModel)]="formulario.telefono"
+            maxlength="30"
+            placeholder="Ej. 944 123 456"
+          />
+        </label>
+
+        <label class="field">
+          <span>Correo electrónico</span>
+          <input
+            name="email"
+            type="email"
+            [(ngModel)]="formulario.email"
+            maxlength="120"
+            placeholder="operaciones@empresa.com"
+          />
+        </label>
+
+        <label class="field full">
+          <span>Dirección</span>
+          <input
+            name="direccion"
+            type="text"
+            [(ngModel)]="formulario.direccion"
+            maxlength="200"
+            placeholder="Dirección fiscal o comercial"
+          />
+        </label>
+
+        <label class="switch-field full" *ngIf="clienteEditandoId !== null">
+          <div>
+            <strong>Cliente activo</strong>
+            <span>Permite utilizar al cliente en nuevas operaciones.</span>
+          </div>
+
+          <input
+            name="activo"
+            type="checkbox"
+            [(ngModel)]="formulario.activo"
+          />
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button
+          class="secondary-button"
+          type="button"
+          [disabled]="guardando"
+          (click)="cerrarFormulario()">
+          Cancelar
+        </button>
+
+        <button
+          class="primary-button"
+          type="submit"
+          [disabled]="clienteForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (clienteEditandoId === null ? 'Registrar cliente' : 'Guardar cambios') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

@@ -2,6 +2,7 @@ package com.yankardev.sitrac.pedido.infrastructure.adapter.in.rest;
 
 import com.yankardev.sitrac.pedido.domain.model.Pedido;
 import com.yankardev.sitrac.pedido.domain.port.in.PedidoUseCase;
+import com.yankardev.sitrac.pedido.infrastructure.adapter.in.rest.dto.EstadoPedidoRequest;
 import com.yankardev.sitrac.pedido.infrastructure.adapter.in.rest.dto.PedidoRequest;
 import com.yankardev.sitrac.pedido.infrastructure.adapter.in.rest.dto.PedidoResponse;
 import jakarta.validation.Valid;
@@ -35,6 +36,13 @@ public class PedidoController {
     @PutMapping("/{id}")
     public PedidoResponse actualizar(@PathVariable Long id, @Valid @RequestBody PedidoRequest r) {
         return toResponse(useCase.actualizar(id, fromRequest(r)));
+    }
+
+    @PutMapping("/{id}/estado")
+    public PedidoResponse cambiarEstado(
+            @PathVariable Long id,
+            @Valid @RequestBody EstadoPedidoRequest request) {
+        return toResponse(useCase.cambiarEstado(id, request.estado()));
     }
 
     @DeleteMapping("/{id}")

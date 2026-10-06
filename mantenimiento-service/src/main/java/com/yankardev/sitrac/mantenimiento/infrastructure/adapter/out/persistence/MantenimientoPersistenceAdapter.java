@@ -1,0 +1,8 @@
+package com.yankardev.sitrac.mantenimiento.infrastructure.adapter.out.persistence;
+import com.yankardev.sitrac.mantenimiento.domain.model.Mantenimiento;import com.yankardev.sitrac.mantenimiento.domain.port.out.MantenimientoRepositoryPort;import lombok.RequiredArgsConstructor;import org.springframework.stereotype.Component;import java.util.*;
+@Component @RequiredArgsConstructor
+public class MantenimientoPersistenceAdapter implements MantenimientoRepositoryPort{
+ private final MantenimientoJpaRepository repo;public Mantenimiento guardar(Mantenimiento m){return d(repo.save(e(m)));}public List<Mantenimiento> listar(){return repo.findAll().stream().map(this::d).toList();}public Optional<Mantenimiento> buscarPorId(Long id){return repo.findById(id).map(this::d);}public void eliminarPorId(Long id){repo.deleteById(id);}
+ private MantenimientoJpaEntity e(Mantenimiento m){return MantenimientoJpaEntity.builder().id(m.getId()).tipoUnidad(m.getTipoUnidad()).unidadId(m.getUnidadId()).tipoMantenimiento(m.getTipoMantenimiento()).fechaInicio(m.getFechaInicio()).fechaFin(m.getFechaFin()).descripcion(m.getDescripcion()).costo(m.getCosto()).estado(m.getEstado()).build();}
+ private Mantenimiento d(MantenimientoJpaEntity e){return Mantenimiento.builder().id(e.getId()).tipoUnidad(e.getTipoUnidad()).unidadId(e.getUnidadId()).tipoMantenimiento(e.getTipoMantenimiento()).fechaInicio(e.getFechaInicio()).fechaFin(e.getFechaFin()).descripcion(e.getDescripcion()).costo(e.getCosto()).estado(e.getEstado()).build();}
+}

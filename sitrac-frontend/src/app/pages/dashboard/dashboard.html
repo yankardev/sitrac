@@ -1,0 +1,256 @@
+<header class="topbar">
+  <div>
+    <span class="breadcrumb">Operaciones / Dashboard</span>
+    <h1>Panel de control</h1>
+    <p>
+      Resumen general de las operaciones de transporte con información real del sistema.
+      <span *ngIf="actualizadoEn">Actualizado {{ actualizadoEn | date:'HH:mm:ss' }}.</span>
+    </p>
+  </div>
+
+  <div class="top-actions">
+    <button
+      class="notification"
+      type="button"
+      aria-label="Actualizar dashboard"
+      title="Actualizar datos"
+      (click)="cargarDashboard()">
+      ↻
+      <span *ngIf="cargando"></span>
+    </button>
+
+    <a routerLink="/programacion" class="new-operation">
+      + Nueva programación
+    </a>
+  </div>
+</header>
+
+<div class="dashboard-message loading-message" *ngIf="cargando">
+  Actualizando información operativa...
+</div>
+
+<div class="dashboard-message warning-message" *ngIf="!cargando && serviciosConError.length">
+  No respondieron: {{ serviciosConError.join(', ') }}. Los demás datos sí se muestran con normalidad.
+</div>
+
+<section class="metrics">
+  <article class="metric-card">
+    <div class="metric-header">
+      <span>Pedidos activos</span>
+      <div class="metric-icon orange">▣</div>
+    </div>
+
+    <strong>{{ pedidosActivos }}</strong>
+
+    <div class="metric-footer">
+      <span class="neutral">En operación</span>
+      <p>sin finalizar ni cancelar</p>
+    </div>
+  </article>
+
+  <article class="metric-card">
+    <div class="metric-header">
+      <span>Viajes en curso</span>
+      <div class="metric-icon blue">➜</div>
+    </div>
+
+    <strong>{{ viajesEnCurso }}</strong>
+
+    <div class="metric-footer">
+      <span class="neutral">EN VIAJE</span>
+      <p>en este momento</p>
+    </div>
+  </article>
+
+  <article class="metric-card">
+    <div class="metric-header">
+      <span>Unidades disponibles</span>
+      <div class="metric-icon green">✓</div>
+    </div>
+
+    <strong>{{ flotaDisponible }}</strong>
+
+    <div class="metric-footer">
+      <span class="positive">{{ porcentajeDisponible }}%</span>
+      <p>de {{ flotaTotal }} unidades operativas</p>
+    </div>
+  </article>
+
+  <article class="metric-card">
+    <div class="metric-header">
+      <span>En mantenimiento</span>
+      <div class="metric-icon red">⚙</div>
+    </div>
+
+    <strong>{{ flotaMantenimiento }}</strong>
+
+    <div class="metric-footer">
+      <span class="warning">MANTENIMIENTO</span>
+      <p>estado actual de flota</p>
+    </div>
+  </article>
+</section>
+
+<section class="dashboard-grid">
+  <article class="panel operations-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Operaciones recientes</h2>
+        <p>Últimas programaciones registradas</p>
+      </div>
+
+      <a routerLink="/programacion" class="panel-link">Ver todas</a>
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Ruta</th>
+            <th>Conductor</th>
+            <th>Unidad</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr *ngFor="let programacion of operacionesRecientes">
+            <td>
+              <strong>#{{ codigoPedido(programacion.pedidoId) }}</strong>
+              <span>{{ tipoCargaPedido(programacion.pedidoId) }}</span>
+            </td>
+
+            <td>{{ rutaPedido(programacion.pedidoId) }}</td>
+            <td>{{ conductorNombre(programacion.conductorId) }}</td>
+            <td>{{ tractoPlaca(programacion.tractoId) }}</td>
+
+            <td>
+              <span
+                class="status"
+                [ngClass]="claseEstado(estadoOperacion(programacion))">
+                {{ etiquetaEstado(estadoOperacion(programacion)) }}
+              </span>
+            </td>
+          </tr>
+
+          <tr *ngIf="!cargando && operacionesRecientes.length === 0">
+            <td colspan="5" class="empty-row">
+              Aún no hay programaciones registradas.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </article>
+
+  <article class="panel fleet-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Estado de flota</h2>
+        <p>Tractos y semirremolques operativos</p>
+      </div>
+
+      <a routerLink="/flota" class="panel-link">Ver flota</a>
+    </div>
+
+    <div class="fleet-chart">
+      <div class="circle-chart" [style.background]="graficoFlota">
+        <div>
+          <strong>{{ flotaTotal }}</strong>
+          <span>Unidades</span>
+        </div>
+      </div>
+
+      <div class="fleet-legend">
+        <div>
+          <span class="dot green-dot"></span>
+          <p>Disponible</p>
+          <strong>{{ flotaDisponible }}</strong>
+        </div>
+
+        <div>
+          <span class="dot orange-dot"></span>
+          <p>Asignado</p>
+          <strong>{{ flotaAsignada }}</strong>
+        </div>
+
+        <div>
+          <span class="dot red-dot"></span>
+          <p>Mantenimiento</p>
+          <strong>{{ flotaMantenimiento }}</strong>
+        </div>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="bottom-grid">
+  <article class="panel quick-actions">
+    <div class="panel-header">
+      <div>
+        <h2>Acciones rápidas</h2>
+        <p>Operaciones frecuentes</p>
+      </div>
+    </div>
+
+    <div class="action-grid">
+      <a routerLink="/pedidos">
+        <span class="orange-bg">+</span>
+        <div>
+          <strong>Nuevo pedido</strong>
+          <p>Registrar solicitud</p>
+        </div>
+      </a>
+
+      <a routerLink="/programacion">
+        <span class="green-bg">✓</span>
+        <div>
+          <strong>Programar viaje</strong>
+          <p>Asignar recursos</p>
+        </div>
+      </a>
+
+      <a routerLink="/combustible">
+        <span class="blue-bg">◆</span>
+        <div>
+          <strong>Combustible</strong>
+          <p>Registrar abastecimiento</p>
+        </div>
+      </a>
+
+      <a routerLink="/mantenimiento">
+        <span class="purple-bg">⚙</span>
+        <div>
+          <strong>Mantenimiento</strong>
+          <p>Registrar servicio</p>
+        </div>
+      </a>
+    </div>
+  </article>
+
+  <article class="panel activity-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Actividad del sistema</h2>
+        <p>Movimientos reales más recientes</p>
+      </div>
+    </div>
+
+    <div class="activity">
+      <div class="activity-item" *ngFor="let item of actividades">
+        <span class="activity-icon" [ngClass]="item.clase">{{ item.icono }}</span>
+
+        <div>
+          <strong>{{ item.titulo }}</strong>
+          <p>{{ item.detalle }}</p>
+          <small>{{ item.fecha | date:'dd/MM/yyyy HH:mm' }}</small>
+        </div>
+      </div>
+
+      <div class="activity-empty" *ngIf="!cargando && actividades.length === 0">
+        Todavía no hay actividad operativa para mostrar.
+      </div>
+    </div>
+  </article>
+</section>

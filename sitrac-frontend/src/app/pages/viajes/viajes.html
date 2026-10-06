@@ -1,0 +1,327 @@
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Operaciones / Viajes</span>
+    <h1>Gestión de viajes</h1>
+    <p>Controla la ejecución de cada programación desde la salida hasta el cierre del servicio.</p>
+  </div>
+
+  <button class="primary-button" type="button" (click)="abrirNuevo()">
+    <span>+</span>
+    Generar viaje
+  </button>
+</header>
+
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">➜</div>
+    <div>
+      <span>Total de viajes</span>
+      <strong>{{ viajes.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">◉</div>
+    <div>
+      <span>Programados</span>
+      <strong>{{ totalProgramados }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon purple">→</div>
+    <div>
+      <span>En viaje</span>
+      <strong>{{ totalEnViaje }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Finalizados</span>
+      <strong>{{ totalFinalizados }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Operaciones de transporte</h2>
+      <p>Seguimiento de viajes vinculados a programaciones activas</p>
+    </div>
+
+    <div class="filters">
+      <label class="search-box">
+        <span>⌕</span>
+        <input
+          type="search"
+          [(ngModel)]="busqueda"
+          placeholder="Buscar viaje, pedido, conductor o placa"
+        />
+      </label>
+
+      <select class="state-filter" [(ngModel)]="filtroEstado">
+        <option value="TODOS">Todos los estados</option>
+        <option value="PROGRAMADO">Programado</option>
+        <option value="EN_VIAJE">En viaje</option>
+        <option value="FINALIZADO">Finalizado</option>
+        <option value="CANCELADO">Cancelado</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando viajes...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && viajesFiltrados.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Viaje</th>
+          <th>Pedido</th>
+          <th>Ruta</th>
+          <th>Conductor</th>
+          <th>Unidad</th>
+          <th>Inicio / Fin</th>
+          <th>Kilometraje</th>
+          <th>Estado</th>
+          <th class="actions-column">Acciones</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <tr *ngFor="let viaje of viajesFiltrados">
+          <td>
+            <strong class="trip-code">#VIA-{{ codigo(viaje.id) }}</strong>
+            <span class="secondary">PROG-{{ codigo(viaje.programacionId) }}</span>
+          </td>
+
+          <td>
+            <strong class="order-code">
+              #PED-{{ codigo(programacionPorId(viaje.programacionId)?.pedidoId || 0) }}
+            </strong>
+            <span class="secondary">
+              {{ pedidoPorProgramacion(viaje.programacionId)?.tipoCarga?.replaceAll('_', ' ') || 'Sin detalle' }}
+            </span>
+          </td>
+
+          <td>
+            <div class="route-cell">
+              <span>{{ pedidoPorProgramacion(viaje.programacionId)?.origen || '—' }}</span>
+              <i>→</i>
+              <span>{{ pedidoPorProgramacion(viaje.programacionId)?.destino || '—' }}</span>
+            </div>
+          </td>
+
+          <td>
+            <strong>{{ conductorNombre(programacionPorId(viaje.programacionId)?.conductorId || 0) }}</strong>
+          </td>
+
+          <td>
+            <strong>{{ tractoPlaca(programacionPorId(viaje.programacionId)?.tractoId || 0) }}</strong>
+          </td>
+
+          <td>
+            <span>{{ viaje.fechaInicio ? (viaje.fechaInicio | date:'dd/MM HH:mm') : 'Sin iniciar' }}</span>
+            <span class="secondary">
+              {{ viaje.fechaFin ? (viaje.fechaFin | date:'dd/MM HH:mm') : 'Sin finalizar' }}
+            </span>
+          </td>
+
+          <td>
+            <span>
+              {{ viaje.kilometrajeInicial !== null ? (viaje.kilometrajeInicial | number:'1.0-1') + ' km' : '—' }}
+            </span>
+            <span class="secondary" *ngIf="distancia(viaje) !== null">
+              Recorrido: {{ distancia(viaje) | number:'1.0-1' }} km
+            </span>
+          </td>
+
+          <td>
+            <span class="status" [ngClass]="claseEstado(viaje.estado)">
+              <i></i>
+              {{ etiquetaEstado(viaje.estado) }}
+            </span>
+          </td>
+
+          <td class="actions-column">
+            <div class="row-actions">
+              <button
+                *ngIf="viaje.estado === 'PROGRAMADO'"
+                class="action-button start"
+                type="button"
+                (click)="abrirOperacion(viaje, 'INICIAR')">
+                Iniciar
+              </button>
+
+              <button
+                *ngIf="viaje.estado === 'EN_VIAJE'"
+                class="action-button finish"
+                type="button"
+                (click)="abrirOperacion(viaje, 'FINALIZAR')">
+                Finalizar
+              </button>
+
+              <button
+                *ngIf="viaje.estado === 'PROGRAMADO' || viaje.estado === 'EN_VIAJE'"
+                class="icon-button cancel"
+                type="button"
+                title="Cancelar viaje"
+                (click)="cancelar(viaje)">
+                ×
+              </button>
+
+              <button
+                *ngIf="viaje.estado === 'FINALIZADO' || viaje.estado === 'CANCELADO'"
+                class="icon-button delete"
+                type="button"
+                title="Eliminar viaje"
+                (click)="eliminar(viaje)">
+                🗑
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && viajesFiltrados.length === 0">
+    <div class="empty-icon">➜</div>
+    <h3>No hay viajes para mostrar</h3>
+    <p *ngIf="busqueda || filtroEstado !== 'TODOS'">
+      No encontramos resultados con los filtros seleccionados.
+    </p>
+    <p *ngIf="!busqueda && filtroEstado === 'TODOS'">
+      Genera un viaje desde una programación activa.
+    </p>
+    <button type="button" (click)="abrirNuevo()">+ Generar viaje</button>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="mostrarNuevo" (click)="cerrarNuevo()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>NUEVA OPERACIÓN</span>
+        <h2>Generar viaje</h2>
+        <p>Selecciona una programación activa para crear el viaje.</p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarNuevo()">×</button>
+    </div>
+
+    <form #viajeForm="ngForm" (ngSubmit)="crearViaje()">
+      <div class="form-grid">
+        <label class="field full">
+          <span>Programación *</span>
+          <select name="programacionId" [(ngModel)]="nuevoViaje.programacionId" required>
+            <option [ngValue]="null" disabled>Selecciona una programación</option>
+            <option *ngFor="let programacion of programacionesDisponibles" [ngValue]="programacion.id">
+              PROG-{{ codigo(programacion.id) }} · PED-{{ codigo(programacion.pedidoId) }} ·
+              {{ conductorNombre(programacion.conductorId) }} · {{ tractoPlaca(programacion.tractoId) }}
+            </option>
+          </select>
+        </label>
+
+        <div class="info-card full" *ngIf="nuevoViaje.programacionId">
+          <span>Flujo operativo</span>
+          <strong>PROGRAMADO → EN VIAJE → FINALIZADO</strong>
+          <p>El kilometraje se registrará al iniciar y finalizar el viaje.</p>
+        </div>
+
+        <label class="field full">
+          <span>Observación</span>
+          <textarea
+            name="observacion"
+            [(ngModel)]="nuevoViaje.observacion"
+            maxlength="500"
+            rows="4"
+            placeholder="Indicaciones o detalle operativo del viaje"></textarea>
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" [disabled]="guardando" (click)="cerrarNuevo()">
+          Cancelar
+        </button>
+
+        <button class="primary-button" type="submit" [disabled]="viajeForm.invalid || guardando">
+          {{ guardando ? 'Generando...' : 'Generar viaje' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="modal-backdrop" *ngIf="mostrarOperacion" (click)="cerrarOperacion()">
+  <section class="operation-modal" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>{{ tipoOperacion === 'INICIAR' ? 'SALIDA DE UNIDAD' : 'CIERRE DE VIAJE' }}</span>
+        <h2>{{ tipoOperacion === 'INICIAR' ? 'Iniciar viaje' : 'Finalizar viaje' }}</h2>
+        <p *ngIf="viajeSeleccionado">
+          VIA-{{ codigo(viajeSeleccionado.id) }} · PROG-{{ codigo(viajeSeleccionado.programacionId) }}
+        </p>
+      </div>
+
+      <button class="close-button" type="button" (click)="cerrarOperacion()">×</button>
+    </div>
+
+    <form #operacionForm="ngForm" (ngSubmit)="guardarOperacion()">
+      <div class="form-grid">
+        <label class="field full">
+          <span>{{ tipoOperacion === 'INICIAR' ? 'Fecha y hora de salida *' : 'Fecha y hora de llegada *' }}</span>
+          <input name="fechaOperacion" type="datetime-local" [(ngModel)]="operacion.fecha" required />
+        </label>
+
+        <label class="field full">
+          <span>{{ tipoOperacion === 'INICIAR' ? 'Kilometraje inicial *' : 'Kilometraje final *' }}</span>
+          <input
+            name="kilometraje"
+            type="number"
+            [(ngModel)]="operacion.kilometraje"
+            min="0"
+            step="0.1"
+            placeholder="0"
+            required
+          />
+        </label>
+
+        <label class="field full">
+          <span>Observación</span>
+          <textarea
+            name="observacionOperacion"
+            [(ngModel)]="operacion.observacion"
+            maxlength="500"
+            rows="4"
+            placeholder="Novedades registradas durante la operación"></textarea>
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" [disabled]="guardando" (click)="cerrarOperacion()">
+          Cancelar
+        </button>
+
+        <button class="primary-button" type="submit" [disabled]="operacionForm.invalid || guardando">
+          {{ guardando ? 'Guardando...' : (tipoOperacion === 'INICIAR' ? 'Confirmar salida' : 'Finalizar viaje') }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

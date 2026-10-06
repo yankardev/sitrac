@@ -5,6 +5,7 @@ import com.yankardev.sitrac.auth.domain.port.out.UsuarioRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -14,9 +15,19 @@ public class UsuarioPersistenceAdapter implements UsuarioRepositoryPort {
     private final UsuarioJpaRepository repository;
 
     @Override
+    public Optional<Usuario> buscarPorId(Long id) {
+        return repository.findById(id).map(this::toDomain);
+    }
+
+    @Override
     public Optional<Usuario> buscarPorUsername(String username) {
         return repository.findByUsername(username)
                 .map(this::toDomain);
+    }
+
+    @Override
+    public List<Usuario> listar() {
+        return repository.findAll().stream().map(this::toDomain).toList();
     }
 
     @Override

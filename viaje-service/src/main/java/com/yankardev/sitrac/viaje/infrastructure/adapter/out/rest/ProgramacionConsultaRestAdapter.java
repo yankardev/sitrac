@@ -1,0 +1,103 @@
+package com.yankardev.sitrac.viaje.infrastructure.adapter.out.rest;
+
+import com.yankardev.sitrac.viaje.application.exception.ReglaNegocioException;
+import com.yankardev.sitrac.viaje.domain.port.out.ProgramacionConsultaPort;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Component
+public class ProgramacionConsultaRestAdapter implements ProgramacionConsultaPort {
+
+    private final RestClient programacionClient;
+
+    public ProgramacionConsultaRestAdapter(
+            @Value("${services.programacion.url}") String programacionUrl
+    ) {
+        this.programacionClient = RestClient.builder()
+                .baseUrl(programacionUrl)
+                .build();
+    }
+
+    @Override
+    public Optional<ProgramacionOperacion> buscarProgramacion(Long id) {
+        try {
+            ProgramacionResponse response = programacionClient.get()
+                    .uri("/api/programaciones/{id}", id)
+                    .retrieve()
+                    .body(ProgramacionResponse.class);
+
+            return response == null
+                    ? Optional.empty()
+                    : Optional.of(new ProgramacionOperacion(
+                            response.id(),
+                            response.pedidoId(),
+                            response.conductorId(),
+                            response.tractoId(),
+                            response.semirremolqueId(),
+                            response.fechaProgramada(),
+                            response.estado()
+                    ));
+        } catch (HttpClientErrorException.NotFound ex) {
+            return Optional.empty();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException("No se pudo consultar programacion-service");
+        }
+    }
+
+    @Override
+    public void iniciarViaje(Long programacionId) {
+        ejecutarAccion(programacionId, "/api/programaciones/{id}/viaje/iniciar", "iniciar");
+    }
+
+    @Override
+    public void finalizarViaje(Long programacionId) {
+        ejecutarAccion(programacionId, "/api/programaciones/{id}/viaje/finalizar", "finalizar");
+    }
+
+    @Override
+    public void cancelarViaje(Long programacionId, boolean iniciado) {
+        try {
+            programacionClient.put()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/programaciones/{id}/viaje/cancelar")
+                            .queryParam("iniciado", iniciado)
+                            .build(programacionId))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException(
+                    "No se pudo sincronizar la cancelación del viaje con programacion-service"
+            );
+        }
+    }
+
+    private void ejecutarAccion(Long programacionId, String uri, String accion) {
+        try {
+            programacionClient.put()
+                    .uri(uri, programacionId)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientException ex) {
+            throw new ReglaNegocioException(
+                    "No se pudo " + accion + " la operación en programacion-service"
+            );
+        }
+    }
+
+    private record ProgramacionResponse(
+            Long id,
+            Long pedidoId,
+            Long conductorId,
+            Long tractoId,
+            Long semirremolqueId,
+            LocalDateTime fechaProgramada,
+            String observacion,
+            String estado
+    ) {}
+}

@@ -1,0 +1,3 @@
+package com.yankardev.sitrac.programacion.infrastructure.adapter.in.rest.dto;
+import com.yankardev.sitrac.programacion.domain.model.EstadoProgramacion;import jakarta.validation.constraints.*;import java.time.LocalDateTime;
+public record ProgramacionRequest(@NotNull Long pedidoId,@NotNull Long conductorId,@NotNull Long tractoId,@NotNull Long semirremolqueId,@NotNull LocalDateTime fechaProgramada,@Size(max=300) String observacion,EstadoProgramacion estado){}

@@ -1,0 +1,3 @@
+package com.yankardev.sitrac.flota.domain.port.out;
+import com.yankardev.sitrac.flota.domain.model.Semirremolque; import java.util.*;
+public interface SemirremolqueRepositoryPort { Semirremolque guardar(Semirremolque s); List<Semirremolque> listar(); Optional<Semirremolque> buscarPorId(Long id); boolean existePorPlaca(String placa); boolean existePorPlacaYIdDistinto(String placa,Long id); void eliminarPorId(Long id); }

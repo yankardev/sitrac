@@ -1,0 +1,1 @@
+package com.yankardev.sitrac.viaje.application.exception; public class ViajeNoEncontradoException extends RuntimeException{public ViajeNoEncontradoException(Long id){super("Viaje no encontrado con id: "+id);}}
