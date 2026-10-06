@@ -72,10 +72,22 @@ public class ProgramacionService implements ProgramacionUseCase {
 
         validarAsignacionInmutable(actual, p);
 
+        if (actual.getEstado() == EstadoProgramacion.FINALIZADA) {
+            throw new ReglaNegocioException(
+                    "Una programación finalizada ya no puede modificarse"
+            );
+        }
+
         if (actual.getEstado() == EstadoProgramacion.CANCELADA
                 && nuevoEstado != EstadoProgramacion.CANCELADA) {
             throw new ReglaNegocioException(
                     "Una programación cancelada no puede volver a activarse; registre una nueva programación"
+            );
+        }
+
+        if (nuevoEstado == EstadoProgramacion.FINALIZADA) {
+            throw new ReglaNegocioException(
+                    "La programación solo se finaliza automáticamente al finalizar el viaje"
             );
         }
 
@@ -93,25 +105,89 @@ public class ProgramacionService implements ProgramacionUseCase {
         if (actual.getEstado() == EstadoProgramacion.PROGRAMADA
                 && nuevoEstado == EstadoProgramacion.CANCELADA) {
             consulta.cambiarEstadoPedido(actual.getPedidoId(), "REGISTRADO");
-            consulta.cambiarDisponibilidadConductor(actual.getConductorId(), true);
-            consulta.cambiarEstadoTracto(actual.getTractoId(), "DISPONIBLE");
-            consulta.cambiarEstadoSemirremolque(actual.getSemirremolqueId(), "DISPONIBLE");
+            liberarRecursos(actual);
         }
 
         return actualizada;
     }
 
     @Override
+    public Programacion iniciarViaje(Long id) {
+        Programacion actual = obtenerPorId(id);
+        validarProgramacionActiva(actual);
+
+        consulta.cambiarEstadoPedido(actual.getPedidoId(), "EN_VIAJE");
+        return actual;
+    }
+
+    @Override
+    public Programacion finalizarViaje(Long id) {
+        Programacion actual = obtenerPorId(id);
+        validarProgramacionActiva(actual);
+
+        consulta.cambiarEstadoPedido(actual.getPedidoId(), "FINALIZADO");
+        liberarRecursos(actual);
+
+        return repo.guardar(Programacion.builder()
+                .id(actual.getId())
+                .pedidoId(actual.getPedidoId())
+                .conductorId(actual.getConductorId())
+                .tractoId(actual.getTractoId())
+                .semirremolqueId(actual.getSemirremolqueId())
+                .fechaProgramada(actual.getFechaProgramada())
+                .observacion(actual.getObservacion())
+                .estado(EstadoProgramacion.FINALIZADA)
+                .build());
+    }
+
+    @Override
+    public Programacion cancelarPorViaje(Long id, boolean viajeIniciado) {
+        Programacion actual = obtenerPorId(id);
+        validarProgramacionActiva(actual);
+
+        consulta.cambiarEstadoPedido(
+                actual.getPedidoId(),
+                viajeIniciado ? "CANCELADO" : "REGISTRADO"
+        );
+        liberarRecursos(actual);
+
+        return repo.guardar(Programacion.builder()
+                .id(actual.getId())
+                .pedidoId(actual.getPedidoId())
+                .conductorId(actual.getConductorId())
+                .tractoId(actual.getTractoId())
+                .semirremolqueId(actual.getSemirremolqueId())
+                .fechaProgramada(actual.getFechaProgramada())
+                .observacion(actual.getObservacion())
+                .estado(EstadoProgramacion.CANCELADA)
+                .build());
+    }
+
+    @Override
     public void eliminar(Long id) {
         Programacion actual = obtenerPorId(id);
 
-        if (actual.getEstado() == EstadoProgramacion.PROGRAMADA) {
+        if (actual.getEstado() != EstadoProgramacion.CANCELADA) {
             throw new ReglaNegocioException(
-                    "No se puede eliminar una programación activa; primero debe cancelarla"
+                    "Solo se puede eliminar una programación cancelada"
             );
         }
 
         repo.eliminarPorId(id);
+    }
+
+    private void validarProgramacionActiva(Programacion programacion) {
+        if (programacion.getEstado() != EstadoProgramacion.PROGRAMADA) {
+            throw new ReglaNegocioException(
+                    "La programación no se encuentra activa para procesar el viaje"
+            );
+        }
+    }
+
+    private void liberarRecursos(Programacion programacion) {
+        consulta.cambiarDisponibilidadConductor(programacion.getConductorId(), true);
+        consulta.cambiarEstadoTracto(programacion.getTractoId(), "DISPONIBLE");
+        consulta.cambiarEstadoSemirremolque(programacion.getSemirremolqueId(), "DISPONIBLE");
     }
 
     private void validarAsignacionInmutable(Programacion actual, Programacion nueva) {
