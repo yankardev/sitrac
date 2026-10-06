@@ -1,4 +1,4 @@
-export type EstadoProgramacion = 'PROGRAMADA' | 'CANCELADA';
+export type EstadoProgramacion = 'PROGRAMADA' | 'FINALIZADA' | 'CANCELADA';
 
 export interface Programacion {
   id: number;
