@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard } from './core/guards/auth.guard';
+import { roleGuard } from './core/guards/role.guard';
 import { MainLayout } from './layout/main-layout/main-layout';
 import { Login } from './pages/login/login';
 
@@ -14,6 +15,11 @@ import { Viajes } from './pages/viajes/viajes';
 import { Combustible } from './pages/combustible/combustible';
 import { Mantenimiento } from './pages/mantenimiento/mantenimiento';
 import { Somma } from './pages/somma/somma';
+
+const TODOS = ['ADMIN', 'OPERADOR', 'SOMMA'];
+const OPERACION = ['ADMIN', 'OPERADOR'];
+const SOLO_ADMIN = ['ADMIN'];
+const SEGURIDAD = ['ADMIN', 'SOMMA'];
 
 export const routes: Routes = [
   {
@@ -32,43 +38,63 @@ export const routes: Routes = [
     children: [
       {
         path: 'dashboard',
-        component: Dashboard
+        component: Dashboard,
+        canActivate: [roleGuard],
+        data: { roles: TODOS }
       },
       {
         path: 'clientes',
-        component: Clientes
+        component: Clientes,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'pedidos',
-        component: Pedidos
+        component: Pedidos,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'programacion',
-        component: Programacion
+        component: Programacion,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'conductores',
-        component: Conductores
+        component: Conductores,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'flota',
-        component: Flota
+        component: Flota,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'viajes',
-        component: Viajes
+        component: Viajes,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'combustible',
-        component: Combustible
+        component: Combustible,
+        canActivate: [roleGuard],
+        data: { roles: OPERACION }
       },
       {
         path: 'mantenimiento',
-        component: Mantenimiento
+        component: Mantenimiento,
+        canActivate: [roleGuard],
+        data: { roles: SOLO_ADMIN }
       },
       {
         path: 'somma',
-        component: Somma
+        component: Somma,
+        canActivate: [roleGuard],
+        data: { roles: SEGURIDAD }
       }
     ]
   },
