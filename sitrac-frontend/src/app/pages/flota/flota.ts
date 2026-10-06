@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs';
 
 import {
   EstadoUnidad,
@@ -12,6 +12,7 @@ import {
   TractoForm
 } from '../../core/models/flota.model';
 import { FlotaService } from '../../core/services/flota.service';
+import { confirmarAccionDestructiva } from '../../core/utils/confirmacion.util';
 
 @Component({
   selector: 'app-flota',
@@ -21,6 +22,7 @@ import { FlotaService } from '../../core/services/flota.service';
 })
 export class Flota implements OnInit {
   private readonly flotaService = inject(FlotaService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   tractos: Tracto[] = [];
   semirremolques: Semirremolque[] = [];
@@ -79,21 +81,32 @@ export class Flota implements OnInit {
   }
 
   cargarDatos(): void {
-    this.cargando = true;
+    const primeraCarga = this.tractos.length === 0;
+    if (primeraCarga) {
+      this.cargando = true;
+    }
     this.error = '';
 
-    forkJoin({
-      tractos: this.flotaService.listarTractos(),
-      semirremolques: this.flotaService.listarSemirremolques()
-    }).subscribe({
-      next: data => {
-        this.tractos = [...data.tractos].sort((a, b) => b.id - a.id);
-        this.semirremolques = [...data.semirremolques].sort((a, b) => b.id - a.id);
+    this.flotaService.listarTractos().subscribe({
+      next: tractos => {
+        this.tractos = [...tractos].sort((a, b) => b.id - a.id);
         this.cargando = false;
+        this.cdr.detectChanges();
       },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo cargar la flota. Verifica flota-service.');
         this.cargando = false;
+        this.cdr.detectChanges();
+      }
+    });
+
+    this.flotaService.listarSemirremolques().subscribe({
+      next: semis => {
+        this.semirremolques = [...semis].sort((a, b) => b.id - a.id);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // Tractos pueden mostrarse aunque semirremolques tarden un poco más.
       }
     });
   }
@@ -158,6 +171,7 @@ export class Flota implements OnInit {
     }
 
     this.guardando = true;
+    const esNuevo = this.editandoId === null;
     const payload: TractoForm = {
       ...this.tractoForm,
       placa: this.tractoForm.placa.trim().toUpperCase(),
@@ -165,15 +179,22 @@ export class Flota implements OnInit {
       modelo: this.tractoForm.modelo.trim()
     };
 
-    const op = this.editandoId === null
+    const op = esNuevo
       ? this.flotaService.crearTracto(payload)
-      : this.flotaService.actualizarTracto(this.editandoId, payload);
+      : this.flotaService.actualizarTracto(this.editandoId!, payload);
 
-    op.subscribe({
-      next: () => this.finalizarGuardado('Tracto guardado correctamente.'),
+    op.pipe(finalize(() => {
+      this.guardando = false;
+      this.cdr.detectChanges();
+    })).subscribe({
+      next: tracto => {
+        this.tractos = this.tractos.some(x => x.id === tracto.id)
+          ? this.tractos.map(x => x.id === tracto.id ? tracto : x)
+          : [tracto, ...this.tractos];
+        this.finalizarGuardado('Tracto guardado correctamente.');
+      },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo guardar el tracto.');
-        this.guardando = false;
       }
     });
   }
@@ -185,29 +206,38 @@ export class Flota implements OnInit {
     }
 
     this.guardando = true;
+    const esNuevo = this.editandoId === null;
     const payload: SemirremolqueForm = {
       ...this.semiForm,
       placa: this.semiForm.placa.trim().toUpperCase()
     };
 
-    const op = this.editandoId === null
+    const op = esNuevo
       ? this.flotaService.crearSemirremolque(payload)
-      : this.flotaService.actualizarSemirremolque(this.editandoId, payload);
+      : this.flotaService.actualizarSemirremolque(this.editandoId!, payload);
 
-    op.subscribe({
-      next: () => this.finalizarGuardado('Semirremolque guardado correctamente.'),
+    op.pipe(finalize(() => {
+      this.guardando = false;
+      this.cdr.detectChanges();
+    })).subscribe({
+      next: semi => {
+        this.semirremolques = this.semirremolques.some(x => x.id === semi.id)
+          ? this.semirremolques.map(x => x.id === semi.id ? semi : x)
+          : [semi, ...this.semirremolques];
+        this.finalizarGuardado('Semirremolque guardado correctamente.');
+      },
       error: error => {
         this.error = this.obtenerMensajeError(error, 'No se pudo guardar el semirremolque.');
-        this.guardando = false;
       }
     });
   }
 
   cambiarEstadoTracto(item: Tracto, estado: EstadoUnidad): void {
     this.flotaService.cambiarEstadoTracto(item.id, estado).subscribe({
-      next: () => {
+      next: actualizado => {
+        this.tractos = this.tractos.map(x => x.id === actualizado.id ? actualizado : x);
         this.mensaje = `Estado de ${item.placa} actualizado.`;
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => this.error = this.obtenerMensajeError(error, 'No se pudo cambiar el estado.')
     });
@@ -215,9 +245,10 @@ export class Flota implements OnInit {
 
   cambiarEstadoSemi(item: Semirremolque, estado: EstadoUnidad): void {
     this.flotaService.cambiarEstadoSemirremolque(item.id, estado).subscribe({
-      next: () => {
+      next: actualizado => {
+        this.semirremolques = this.semirremolques.map(x => x.id === actualizado.id ? actualizado : x);
         this.mensaje = `Estado de ${item.placa} actualizado.`;
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => this.error = this.obtenerMensajeError(error, 'No se pudo cambiar el estado.')
     });
@@ -228,11 +259,18 @@ export class Flota implements OnInit {
       this.error = 'No se puede eliminar un tracto asignado.';
       return;
     }
-    if (!window.confirm(`¿Eliminar el tracto ${item.placa}?`)) return;
+
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar el tracto ${item.placa}.`,
+      `CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente el tracto ${item.placa}?`
+    );
+    if (!confirmado) return;
+
     this.flotaService.eliminarTracto(item.id).subscribe({
       next: () => {
+        this.tractos = this.tractos.filter(x => x.id !== item.id);
         this.mensaje = 'Tracto eliminado correctamente.';
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el tracto.')
     });
@@ -243,11 +281,18 @@ export class Flota implements OnInit {
       this.error = 'No se puede eliminar un semirremolque asignado.';
       return;
     }
-    if (!window.confirm(`¿Eliminar el semirremolque ${item.placa}?`)) return;
+
+    const confirmado = confirmarAccionDestructiva(
+      `ALERTA: vas a eliminar el semirremolque ${item.placa}.`,
+      `CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente el semirremolque ${item.placa}?`
+    );
+    if (!confirmado) return;
+
     this.flotaService.eliminarSemirremolque(item.id).subscribe({
       next: () => {
+        this.semirremolques = this.semirremolques.filter(x => x.id !== item.id);
         this.mensaje = 'Semirremolque eliminado correctamente.';
-        this.cargarDatos();
+        this.cdr.detectChanges();
       },
       error: error => this.error = this.obtenerMensajeError(error, 'No se pudo eliminar el semirremolque.')
     });
@@ -264,10 +309,9 @@ export class Flota implements OnInit {
   private finalizarGuardado(mensaje: string): void {
     this.mensaje = mensaje;
     this.error = '';
-    this.guardando = false;
     this.mostrarFormulario = false;
     this.editandoId = null;
-    this.cargarDatos();
+    this.cdr.detectChanges();
   }
 
   private tractoVacio(): TractoForm {
