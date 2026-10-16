@@ -1,0 +1,7 @@
+.git
+**/target
+**/node_modules
+sitrac-frontend
+docs
+*.md
+!README.md

@@ -1,0 +1,2368 @@
+{
+  "info": {
+    "_postman_id": "ee7c75ea-81cc-4225-a298-26bb4f1b62e9",
+    "name": "SITRAC - Sistema Integral de Transporte de Carga",
+    "description": "Colección para la exposición de SITRAC (Desarrollo de Servicios Web II).\n\nRequisitos: tener levantados los 10 microservicios (docker compose up -d) y la base de demostración (database/sitrac_demo_exposicion.sql).\n\nCada microservicio tiene su propio puerto (variables *_url). La carpeta 05 recorre el flujo completo y se puede ejecutar con el Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 Autenticación y usuarios (auth-service :8081)",
+      "item": [
+        {
+          "name": "Login ADMIN (correcto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/login",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin.sitrac\",\n  \"password\": \"Admin123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Rol ADMIN\", () => pm.expect(pm.response.json().rol).to.eql(\"ADMIN\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login OPERADOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/login",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"operador.sitrac\",\n  \"password\": \"Operador123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con contraseña incorrecta (debe fallar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/login",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin.sitrac\",\n  \"password\": \"incorrecta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Rechaza credenciales (4xx)\", () => pm.expect(pm.response.code).to.be.within(400,499));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/usuarios",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/usuarios",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"demo.{{sufijo}}\",\n  \"password\": \"Demo123*\",\n  \"nombreCompleto\": \"Usuario de prueba Postman\",\n  \"rol\": \"OPERADOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"sufijo\", Date.now().toString().slice(-6));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"usuarioId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/usuarios/{{usuarioId}}",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios",
+                "{{usuarioId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"demo.{{sufijo}}\",\n  \"nombreCompleto\": \"Usuario de prueba (editado)\",\n  \"rol\": \"SUPERVISOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar usuario",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/usuarios/{{usuarioId}}/estado",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios",
+                "{{usuarioId}}",
+                "estado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"activo\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con usuario inactivo (debe fallar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/login",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"demo.{{sufijo}}\",\n  \"password\": \"Demo123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Cuenta inactiva rechazada (4xx)\", () => pm.expect(pm.response.code).to.be.within(400,499));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restablecer contraseña",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_url}}/api/auth/usuarios/{{usuarioId}}/password",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "usuarios",
+                "{{usuarioId}}",
+                "password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"Nueva123*\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 Clientes (cliente-service :8082)",
+      "item": [
+        {
+          "name": "Listar clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{cliente_url}}/api/clientes",
+              "host": [
+                "{{cliente_url}}"
+              ],
+              "path": [
+                "api",
+                "clientes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener cliente 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{cliente_url}}/api/clientes/1",
+              "host": [
+                "{{cliente_url}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear cliente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{cliente_url}}/api/clientes",
+              "host": [
+                "{{cliente_url}}"
+              ],
+              "path": [
+                "api",
+                "clientes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoDocumento\": \"RUC\",\n  \"numeroDocumento\": \"{{ruc}}\",\n  \"nombreRazonSocial\": \"TRANSPORTES DEMO POSTMAN S.A.C.\",\n  \"telefono\": \"044123456\",\n  \"email\": \"contacto@demo.pe\",\n  \"direccion\": \"Av. América Sur 123, Trujillo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"ruc\", \"20\" + Math.floor(100000000 + Math.random()*899999999));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"clienteId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear cliente con datos inválidos (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{cliente_url}}/api/clientes",
+              "host": [
+                "{{cliente_url}}"
+              ],
+              "path": [
+                "api",
+                "clientes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoDocumento\": \"RUC\",\n  \"numeroDocumento\": \"123\",\n  \"nombreRazonSocial\": \"X\",\n  \"email\": \"no-es-correo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{cliente_url}}/api/clientes/{{clienteId}}",
+              "host": [
+                "{{cliente_url}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "{{clienteId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoDocumento\": \"RUC\",\n  \"numeroDocumento\": \"{{ruc}}\",\n  \"nombreRazonSocial\": \"TRANSPORTES DEMO POSTMAN S.A.C.\",\n  \"telefono\": \"044999888\",\n  \"email\": \"operaciones@demo.pe\",\n  \"direccion\": \"Av. América Sur 456, Trujillo\",\n  \"activo\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener cliente inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{cliente_url}}/api/clientes/999999",
+              "host": [
+                "{{cliente_url}}"
+              ],
+              "path": [
+                "api",
+                "clientes",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 Conductores (conductor-service :8084)",
+      "item": [
+        {
+          "name": "Listar conductores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{conductor_url}}/api/conductores",
+              "host": [
+                "{{conductor_url}}"
+              ],
+              "path": [
+                "api",
+                "conductores"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear conductor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{conductor_url}}/api/conductores",
+              "host": [
+                "{{conductor_url}}"
+              ],
+              "path": [
+                "api",
+                "conductores"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dni\": \"{{dni}}\",\n  \"nombres\": \"PEDRO\",\n  \"apellidos\": \"PRUEBA POSTMAN\",\n  \"numeroLicencia\": \"Q{{dni}}\",\n  \"categoriaLicencia\": \"A-IIIC\",\n  \"fechaVencimientoLicencia\": \"2030-12-31\",\n  \"telefono\": \"900111222\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"dni\", String(Math.floor(10000000 + Math.random()*89999999)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"conductorNuevoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar disponibilidad",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{conductor_url}}/api/conductores/{{conductorNuevoId}}/disponibilidad",
+              "host": [
+                "{{conductor_url}}"
+              ],
+              "path": [
+                "api",
+                "conductores",
+                "{{conductorNuevoId}}",
+                "disponibilidad"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disponible\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 2xx\", () => pm.expect(pm.response.code).to.be.within(200,299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Volver a disponible (requisito para eliminar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{conductor_url}}/api/conductores/{{conductorNuevoId}}/disponibilidad",
+              "host": [
+                "{{conductor_url}}"
+              ],
+              "path": [
+                "api",
+                "conductores",
+                "{{conductorNuevoId}}",
+                "disponibilidad"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"disponible\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar conductor creado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{conductor_url}}/api/conductores/{{conductorNuevoId}}",
+              "host": [
+                "{{conductor_url}}"
+              ],
+              "path": [
+                "api",
+                "conductores",
+                "{{conductorNuevoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 Flota: tractos y semirremolques (flota-service :8085)",
+      "item": [
+        {
+          "name": "Listar tractos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar semirremolques",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/semirremolques",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "semirremolques"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear tracto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"TPM-{{placa}}\",\n  \"marca\": \"VOLVO\",\n  \"modelo\": \"FH 460\",\n  \"anio\": 2024,\n  \"capacidadToneladas\": 35\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"placa\", String(Math.floor(100 + Math.random()*899)));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"tractoNuevoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear semirremolque",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{flota_url}}/api/semirremolques",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "semirremolques"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"placa\": \"SPM-{{placa}}\",\n  \"tipo\": \"PLATAFORMA\",\n  \"capacidadToneladas\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"semiNuevoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cambiar estado del tracto a INACTIVO",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/{{tractoNuevoId}}/estado",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "{{tractoNuevoId}}",
+                "estado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"INACTIVO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Volver tracto a DISPONIBLE (requisito para eliminar)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/{{tractoNuevoId}}/estado",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "{{tractoNuevoId}}",
+                "estado"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"DISPONIBLE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar tracto creado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/{{tractoNuevoId}}",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "{{tractoNuevoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar semirremolque creado",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/semirremolques/{{semiNuevoId}}",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "semirremolques",
+                "{{semiNuevoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar tracto ASIGNADO (debe fallar)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/3",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "3"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Bloqueado por regla de negocio (4xx)\", () => pm.expect(pm.response.code).to.be.within(400,499));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 FLUJO COMPLETO: pedido → programación → SOMMA → viaje → combustible → cierre",
+      "item": [
+        {
+          "name": "1. Crear pedido (CAL_GRANEL, 30 t)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{pedido_url}}/api/pedidos",
+              "host": [
+                "{{pedido_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"tipoCarga\": \"CAL_GRANEL\",\n  \"descripcionCarga\": \"Cal a granel - demo Postman\",\n  \"toneladas\": 30,\n  \"origen\": \"Pacasmayo, La Libertad\",\n  \"destino\": \"Trujillo, La Libertad\",\n  \"fechaSolicitud\": \"{{fechaHoy}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Usa el cliente creado en la carpeta 02 (o el cliente 1 si no se ejecutó)."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date();",
+                  "pm.collectionVariables.set(\"fechaHoy\", d.toISOString().slice(0,10));",
+                  "pm.collectionVariables.set(\"fechaHora\", d.toISOString().slice(0,19));",
+                  "if (!pm.collectionVariables.get(\"clienteId\")) pm.collectionVariables.set(\"clienteId\", 1);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"pedidoId\", pm.response.json().id);",
+                  "pm.test(\"Pedido REGISTRADO\", () => pm.expect(pm.response.json().estado).to.eql(\"REGISTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Programación INCOMPATIBLE: CAL_GRANEL con CAMA_BAJA (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{programacion_url}}/api/programaciones",
+              "host": [
+                "{{programacion_url}}"
+              ],
+              "path": [
+                "api",
+                "programaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": \"{{pedidoId}}\",\n  \"conductorId\": 4,\n  \"tractoId\": 5,\n  \"semirremolqueId\": 5,\n  \"fechaProgramada\": \"{{fechaHora}}\",\n  \"observacion\": \"Debe rechazarse\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Regla: CAL_GRANEL solo viaja en semirremolque BOMBONA. El semirremolque 5 (S1A-305) es CAMA_BAJA."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Mensaje de compatibilidad\", () => pm.expect(pm.response.text().toLowerCase()).to.include(\"bombona\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Programación válida (conductor 4, tracto T1A-205, bombona S1A-304)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{programacion_url}}/api/programaciones",
+              "host": [
+                "{{programacion_url}}"
+              ],
+              "path": [
+                "api",
+                "programaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": \"{{pedidoId}}\",\n  \"conductorId\": 4,\n  \"tractoId\": 5,\n  \"semirremolqueId\": 4,\n  \"fechaProgramada\": \"{{fechaHora}}\",\n  \"observacion\": \"Programación creada desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"programacionId\", pm.response.json().id);",
+                  "pm.test(\"PROGRAMADA\", () => pm.expect(pm.response.json().estado).to.eql(\"PROGRAMADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Verificar pedido PROGRAMADO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{pedido_url}}/api/pedidos/{{pedidoId}}",
+              "host": [
+                "{{pedido_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "{{pedidoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Pedido PROGRAMADO\", () => pm.expect(pm.response.json().estado).to.eql(\"PROGRAMADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Verificar tracto ASIGNADO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/5",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "5"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tracto ASIGNADO\", () => pm.expect(pm.response.json().estado).to.eql(\"ASIGNADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Reusar el mismo tracto en otra programación (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{programacion_url}}/api/programaciones",
+              "host": [
+                "{{programacion_url}}"
+              ],
+              "path": [
+                "api",
+                "programaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": 10,\n  \"conductorId\": 5,\n  \"tractoId\": 5,\n  \"semirremolqueId\": 1,\n  \"fechaProgramada\": \"{{fechaHora}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Crear viaje",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{viaje_url}}/api/viajes",
+              "host": [
+                "{{viaje_url}}"
+              ],
+              "path": [
+                "api",
+                "viajes"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programacionId\": \"{{programacionId}}\",\n  \"observacion\": \"Viaje creado desde Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"viajeId\", pm.response.json().id);",
+                  "pm.test(\"Viaje PROGRAMADO\", () => pm.expect(pm.response.json().estado).to.eql(\"PROGRAMADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Iniciar viaje SIN charla SOMMA (409)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{viaje_url}}/api/viajes/{{viajeId}}",
+              "host": [
+                "{{viaje_url}}"
+              ],
+              "path": [
+                "api",
+                "viajes",
+                "{{viajeId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programacionId\": \"{{programacionId}}\",\n  \"fechaInicio\": \"{{fechaHora}}\",\n  \"kilometrajeInicial\": 150000,\n  \"estado\": \"EN_VIAJE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"Exige SOMMA\", () => pm.expect(pm.response.text()).to.include(\"SOMMA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9a. Registrar charla SOMMA (queda REGISTRADO)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{somma_url}}/api/somma",
+              "host": [
+                "{{somma_url}}"
+              ],
+              "path": [
+                "api",
+                "somma"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"CHARLA\",\n  \"programacionId\": \"{{programacionId}}\",\n  \"conductorId\": 4,\n  \"fecha\": \"{{fechaHora}}\",\n  \"titulo\": \"Charla de seguridad previa al viaje\",\n  \"descripcion\": \"Revisión de EPP, documentación y estado de la unidad.\",\n  \"lugar\": \"Base Pacasmayo\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"sommaId\", pm.response.json().id);",
+                  "pm.test(\"Charla REGISTRADO\", () => pm.expect(pm.response.json().estado).to.eql(\"REGISTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9b. Cerrar charla SOMMA (CERRADO)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{somma_url}}/api/somma/{{sommaId}}",
+              "host": [
+                "{{somma_url}}"
+              ],
+              "path": [
+                "api",
+                "somma",
+                "{{sommaId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"CHARLA\",\n  \"programacionId\": \"{{programacionId}}\",\n  \"conductorId\": 4,\n  \"fecha\": \"{{fechaHora}}\",\n  \"titulo\": \"Charla de seguridad previa al viaje\",\n  \"descripcion\": \"Revisión de EPP, documentación y estado de la unidad.\",\n  \"lugar\": \"Base Pacasmayo\",\n  \"estado\": \"CERRADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Charla CERRADO\", () => pm.expect(pm.response.json().estado).to.eql(\"CERRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Iniciar viaje (EN_VIAJE)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{viaje_url}}/api/viajes/{{viajeId}}",
+              "host": [
+                "{{viaje_url}}"
+              ],
+              "path": [
+                "api",
+                "viajes",
+                "{{viajeId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programacionId\": \"{{programacionId}}\",\n  \"fechaInicio\": \"{{fechaHora}}\",\n  \"kilometrajeInicial\": 150000,\n  \"observacion\": \"Salida de base\",\n  \"estado\": \"EN_VIAJE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"EN_VIAJE\", () => pm.expect(pm.response.json().estado).to.eql(\"EN_VIAJE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Verificar pedido EN_VIAJE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{pedido_url}}/api/pedidos/{{pedidoId}}",
+              "host": [
+                "{{pedido_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "{{pedidoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Pedido EN_VIAJE\", () => pm.expect(pm.response.json().estado).to.eql(\"EN_VIAJE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Abastecimiento con tracto equivocado (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{combustible_url}}/api/combustible/abastecimientos",
+              "host": [
+                "{{combustible_url}}"
+              ],
+              "path": [
+                "api",
+                "combustible",
+                "abastecimientos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programacionId\": \"{{programacionId}}\",\n  \"viajeId\": \"{{viajeId}}\",\n  \"conductorId\": 4,\n  \"tractoId\": 1,\n  \"tipoAbastecimiento\": \"INTERNO\",\n  \"fechaHora\": \"{{fechaHora}}\",\n  \"cantidadGalones\": 40,\n  \"kilometraje\": 150050,\n  \"precioUnitario\": 15.5,\n  \"tanqueOrigen\": \"Tanque Base Trujillo 01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Abastecimiento a TERCERO (grifo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{combustible_url}}/api/combustible/abastecimientos",
+              "host": [
+                "{{combustible_url}}"
+              ],
+              "path": [
+                "api",
+                "combustible",
+                "abastecimientos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programacionId\": \"{{programacionId}}\",\n  \"viajeId\": \"{{viajeId}}\",\n  \"conductorId\": 4,\n  \"tractoId\": 5,\n  \"tipoAbastecimiento\": \"TERCERO\",\n  \"fechaHora\": \"{{fechaHora}}\",\n  \"cantidadGalones\": 45.5,\n  \"kilometraje\": 150080,\n  \"precioUnitario\": 16.2,\n  \"proveedor\": \"Grifo Repsol Panamericana Norte\",\n  \"numeroComprobante\": \"F001-000123\",\n  \"observacion\": \"Abastecimiento en ruta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"abastecimientoId\", pm.response.json().id);",
+                  "pm.test(\"Costo total = galones x precio\", () => pm.expect(Number(pm.response.json().costoTotal)).to.eql(737.1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Finalizar viaje",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{viaje_url}}/api/viajes/{{viajeId}}",
+              "host": [
+                "{{viaje_url}}"
+              ],
+              "path": [
+                "api",
+                "viajes",
+                "{{viajeId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"programacionId\": \"{{programacionId}}\",\n  \"fechaInicio\": \"{{fechaHora}}\",\n  \"fechaFin\": \"{{fechaHora}}\",\n  \"kilometrajeInicial\": 150000,\n  \"kilometrajeFinal\": 150180,\n  \"observacion\": \"Entrega conforme\",\n  \"estado\": \"FINALIZADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"FINALIZADO\", () => pm.expect(pm.response.json().estado).to.eql(\"FINALIZADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Verificar pedido FINALIZADO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{pedido_url}}/api/pedidos/{{pedidoId}}",
+              "host": [
+                "{{pedido_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos",
+                "{{pedidoId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Pedido FINALIZADO\", () => pm.expect(pm.response.json().estado).to.eql(\"FINALIZADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Verificar programación FINALIZADA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{programacion_url}}/api/programaciones/{{programacionId}}",
+              "host": [
+                "{{programacion_url}}"
+              ],
+              "path": [
+                "api",
+                "programaciones",
+                "{{programacionId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Programación FINALIZADA\", () => pm.expect(pm.response.json().estado).to.eql(\"FINALIZADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Verificar tracto liberado (DISPONIBLE)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/5",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "5"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tracto DISPONIBLE\", () => pm.expect(pm.response.json().estado).to.eql(\"DISPONIBLE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Verificar conductor disponible",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{conductor_url}}/api/conductores/4",
+              "host": [
+                "{{conductor_url}}"
+              ],
+              "path": [
+                "api",
+                "conductores",
+                "4"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Conductor disponible\", () => pm.expect(pm.response.json().disponible).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Ejecutar en orden (Runner). Cada paso guarda los IDs en variables de la colección. Al final los recursos quedan libres, así que se puede repetir."
+    },
+    {
+      "name": "06 Mantenimiento (mantenimiento-service :8088)",
+      "item": [
+        {
+          "name": "Listar mantenimientos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{mantenimiento_url}}/api/mantenimientos",
+              "host": [
+                "{{mantenimiento_url}}"
+              ],
+              "path": [
+                "api",
+                "mantenimientos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Programar mantenimiento preventivo (tracto 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mantenimiento_url}}/api/mantenimientos",
+              "host": [
+                "{{mantenimiento_url}}"
+              ],
+              "path": [
+                "api",
+                "mantenimientos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoUnidad\": \"TRACTO\",\n  \"unidadId\": 1,\n  \"tipoMantenimiento\": \"PREVENTIVO\",\n  \"fechaInicio\": \"{{fechaHoy}}\",\n  \"descripcion\": \"Cambio de aceite y filtros\",\n  \"costo\": 950\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"fechaHoy\", new Date().toISOString().slice(0,10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.collectionVariables.set(\"mantenimientoId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pasar a EN_PROCESO",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mantenimiento_url}}/api/mantenimientos/{{mantenimientoId}}",
+              "host": [
+                "{{mantenimiento_url}}"
+              ],
+              "path": [
+                "api",
+                "mantenimientos",
+                "{{mantenimientoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoUnidad\": \"TRACTO\",\n  \"unidadId\": 1,\n  \"tipoMantenimiento\": \"PREVENTIVO\",\n  \"fechaInicio\": \"{{fechaHoy}}\",\n  \"descripcion\": \"Cambio de aceite y filtros\",\n  \"costo\": 950,\n  \"estado\": \"EN_PROCESO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verificar tracto 1 en MANTENIMIENTO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/1",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tracto en MANTENIMIENTO\", () => pm.expect(pm.response.json().estado).to.eql(\"MANTENIMIENTO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalizar mantenimiento",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{mantenimiento_url}}/api/mantenimientos/{{mantenimientoId}}",
+              "host": [
+                "{{mantenimiento_url}}"
+              ],
+              "path": [
+                "api",
+                "mantenimientos",
+                "{{mantenimientoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoUnidad\": \"TRACTO\",\n  \"unidadId\": 1,\n  \"tipoMantenimiento\": \"PREVENTIVO\",\n  \"fechaInicio\": \"{{fechaHoy}}\",\n  \"fechaFin\": \"{{fechaHoy}}\",\n  \"descripcion\": \"Cambio de aceite y filtros\",\n  \"costo\": 950,\n  \"estado\": \"FINALIZADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verificar tracto 1 DISPONIBLE",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{flota_url}}/api/tractos/1",
+              "host": [
+                "{{flota_url}}"
+              ],
+              "path": [
+                "api",
+                "tractos",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Tracto DISPONIBLE\", () => pm.expect(pm.response.json().estado).to.eql(\"DISPONIBLE\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 Consultas generales",
+      "item": [
+        {
+          "name": "Listar pedidos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{pedido_url}}/api/pedidos",
+              "host": [
+                "{{pedido_url}}"
+              ],
+              "path": [
+                "api",
+                "pedidos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar programaciones",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{programacion_url}}/api/programaciones",
+              "host": [
+                "{{programacion_url}}"
+              ],
+              "path": [
+                "api",
+                "programaciones"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar viajes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{viaje_url}}/api/viajes",
+              "host": [
+                "{{viaje_url}}"
+              ],
+              "path": [
+                "api",
+                "viajes"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar registros SOMMA",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{somma_url}}/api/somma",
+              "host": [
+                "{{somma_url}}"
+              ],
+              "path": [
+                "api",
+                "somma"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar abastecimientos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{combustible_url}}/api/combustible/abastecimientos",
+              "host": [
+                "{{combustible_url}}"
+              ],
+              "path": [
+                "api",
+                "combustible",
+                "abastecimientos"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar viaje no cancelado (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{viaje_url}}/api/viajes/1",
+              "host": [
+                "{{viaje_url}}"
+              ],
+              "path": [
+                "api",
+                "viajes",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "auth_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "cliente_url",
+      "value": "http://localhost:8082"
+    },
+    {
+      "key": "pedido_url",
+      "value": "http://localhost:8083"
+    },
+    {
+      "key": "conductor_url",
+      "value": "http://localhost:8084"
+    },
+    {
+      "key": "flota_url",
+      "value": "http://localhost:8085"
+    },
+    {
+      "key": "programacion_url",
+      "value": "http://localhost:8086"
+    },
+    {
+      "key": "viaje_url",
+      "value": "http://localhost:8087"
+    },
+    {
+      "key": "mantenimiento_url",
+      "value": "http://localhost:8088"
+    },
+    {
+      "key": "somma_url",
+      "value": "http://localhost:8089"
+    },
+    {
+      "key": "combustible_url",
+      "value": "http://localhost:8090"
+    }
+  ]
+}
