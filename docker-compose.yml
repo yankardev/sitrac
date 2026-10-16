@@ -1,0 +1,208 @@
+# SITRAC con Docker: MySQL + 10 microservicios + frontend Angular.
+#   docker compose up -d --build
+# Web:      http://localhost:4200   (admin.sitrac / Admin123*)
+# APIs:     http://localhost:8081 ... http://localhost:8090
+# MySQL:    localhost:3307 (root / sitrac)
+# La primera vez la base se carga con database/sitrac_demo_exposicion.sql.
+# Para volver a los datos iniciales: docker compose down -v && docker compose up -d
+
+x-service: &service
+  restart: unless-stopped
+  depends_on:
+    mysql:
+      condition: service_healthy
+
+x-db: &db
+  MYSQL_USER: root
+  MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sitrac}
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: sitrac-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sitrac}
+      TZ: America/Lima
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./database/sitrac_demo_exposicion.sql:/docker-entrypoint-initdb.d/01-sitrac_demo_exposicion.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  auth-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: auth-service
+    image: sitrac/auth-service
+    container_name: sitrac-auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *db
+      MYSQL_URL: "jdbc:mysql://mysql:3306/sitrac_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+
+  cliente-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: cliente-service
+    image: sitrac/cliente-service
+    container_name: sitrac-cliente-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *db
+      MYSQL_CLIENTE_URL: "jdbc:mysql://mysql:3306/sitrac_clientes?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+
+  pedido-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: pedido-service
+    image: sitrac/pedido-service
+    container_name: sitrac-pedido-service
+    ports:
+      - "8083:8083"
+    environment:
+      <<: *db
+      MYSQL_PEDIDO_URL: "jdbc:mysql://mysql:3306/sitrac_pedidos?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      CLIENTE_SERVICE_URL: http://cliente-service:8082
+
+  conductor-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: conductor-service
+    image: sitrac/conductor-service
+    container_name: sitrac-conductor-service
+    ports:
+      - "8084:8084"
+    environment:
+      <<: *db
+      MYSQL_CONDUCTOR_URL: "jdbc:mysql://mysql:3306/sitrac_conductores?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+
+  flota-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: flota-service
+    image: sitrac/flota-service
+    container_name: sitrac-flota-service
+    ports:
+      - "8085:8085"
+    environment:
+      <<: *db
+      MYSQL_FLOTA_URL: "jdbc:mysql://mysql:3306/sitrac_flota?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+
+  programacion-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: programacion-service
+    image: sitrac/programacion-service
+    container_name: sitrac-programacion-service
+    ports:
+      - "8086:8086"
+    environment:
+      <<: *db
+      MYSQL_PROGRAMACION_URL: "jdbc:mysql://mysql:3306/sitrac_programaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      PEDIDO_SERVICE_URL: http://pedido-service:8083
+      CONDUCTOR_SERVICE_URL: http://conductor-service:8084
+      FLOTA_SERVICE_URL: http://flota-service:8085
+
+  viaje-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: viaje-service
+    image: sitrac/viaje-service
+    container_name: sitrac-viaje-service
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *db
+      MYSQL_VIAJE_URL: "jdbc:mysql://mysql:3306/sitrac_viajes?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      PROGRAMACION_SERVICE_URL: http://programacion-service:8086
+      SOMMA_SERVICE_URL: http://somma-service:8089
+
+  mantenimiento-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: mantenimiento-service
+    image: sitrac/mantenimiento-service
+    container_name: sitrac-mantenimiento-service
+    ports:
+      - "8088:8088"
+    environment:
+      <<: *db
+      MYSQL_MANTENIMIENTO_URL: "jdbc:mysql://mysql:3306/sitrac_mantenimiento?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      FLOTA_SERVICE_URL: http://flota-service:8085
+
+  somma-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: somma-service
+    image: sitrac/somma-service
+    container_name: sitrac-somma-service
+    ports:
+      - "8089:8089"
+    environment:
+      <<: *db
+      MYSQL_SOMMA_URL: "jdbc:mysql://mysql:3306/sitrac_somma?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      PROGRAMACION_SERVICE_URL: http://programacion-service:8086
+
+  combustible-service:
+    <<: *service
+    build:
+      context: .
+      args:
+        SERVICE: combustible-service
+    image: sitrac/combustible-service
+    container_name: sitrac-combustible-service
+    ports:
+      - "8090:8090"
+    environment:
+      <<: *db
+      MYSQL_COMBUSTIBLE_URL: "jdbc:mysql://mysql:3306/sitrac_combustible?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      PROGRAMACION_SERVICE_URL: http://programacion-service:8086
+
+  frontend:
+    build: ./sitrac-frontend
+    image: sitrac/frontend
+    container_name: sitrac-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - auth-service
+      - cliente-service
+      - pedido-service
+      - conductor-service
+      - flota-service
+      - programacion-service
+      - viaje-service
+      - mantenimiento-service
+      - somma-service
+      - combustible-service
+
+volumes:
+  mysql-data:
