@@ -32,14 +32,14 @@ public class CorreoService {
         this.from = from;
     }
 
-    public void enviar(String destino, String asunto, String cuerpo) {
+    public ResultadoCorreo enviar(String destino, String asunto, String cuerpo) {
         if (!destinoValido(destino, asunto)) {
-            return;
+            return ResultadoCorreo.OMITIDA;
         }
 
         if (!enabled) {
             log.info("[EMAIL DEMO] Para={} | Asunto={} | Mensaje={}", destino, asunto, cuerpo);
-            return;
+            return ResultadoCorreo.SIMULADA;
         }
 
         SimpleMailMessage mensaje = new SimpleMailMessage();
@@ -50,9 +50,10 @@ public class CorreoService {
         mailSender.send(mensaje);
 
         log.info("Correo enviado a {} con asunto '{}'", destino, asunto);
+        return ResultadoCorreo.ENVIADA;
     }
 
-    public void enviarConAdjunto(
+    public ResultadoCorreo enviarConAdjunto(
             String destino,
             String asunto,
             String cuerpo,
@@ -60,18 +61,17 @@ public class CorreoService {
             String nombreAdjunto
     ) {
         if (!destinoValido(destino, asunto)) {
-            return;
+            return ResultadoCorreo.OMITIDA;
         }
 
         if (adjunto == null || adjunto.length == 0) {
-            enviar(destino, asunto, cuerpo);
-            return;
+            return enviar(destino, asunto, cuerpo);
         }
 
         if (!enabled) {
             log.info("[EMAIL DEMO] Para={} | Asunto={} | Mensaje={} | Adjunto={} ({} bytes)",
                     destino, asunto, cuerpo, nombreAdjunto, adjunto.length);
-            return;
+            return ResultadoCorreo.SIMULADA;
         }
 
         try {
@@ -92,6 +92,7 @@ public class CorreoService {
 
             mailSender.send(mensaje);
             log.info("Correo con adjunto enviado a {} con asunto '{}'", destino, asunto);
+            return ResultadoCorreo.ENVIADA;
         } catch (MessagingException ex) {
             throw new IllegalStateException("No se pudo preparar el correo con adjunto", ex);
         }
