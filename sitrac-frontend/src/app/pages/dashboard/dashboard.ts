@@ -14,10 +14,8 @@ import {
 import { Viaje } from '../../core/models/viaje.model';
 import { ClienteService } from '../../core/services/cliente.service';
 import { CombustibleService } from '../../core/services/combustible.service';
-import { MantenimientoService } from '../../core/services/mantenimiento.service';
 import { PedidoService } from '../../core/services/pedido.service';
 import { ProgramacionService } from '../../core/services/programacion.service';
-import { SommaService } from '../../core/services/somma.service';
 import { ViajeService } from '../../core/services/viaje.service';
 
 interface ActividadDashboard {
@@ -41,8 +39,6 @@ export class Dashboard implements OnInit {
   private readonly viajeService = inject(ViajeService);
   private readonly combustibleService = inject(CombustibleService);
   private readonly clienteService = inject(ClienteService);
-  private readonly mantenimientoService = inject(MantenimientoService);
-  private readonly sommaService = inject(SommaService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   pedidos: Pedido[] = [];
@@ -60,7 +56,7 @@ export class Dashboard implements OnInit {
 
   ngOnInit(): void {
     this.cargarDashboard();
-    this.precargarModulosSecundarios();
+    this.precargarClientes();
   }
 
   get pedidosActivos(): number {
@@ -226,15 +222,9 @@ export class Dashboard implements OnInit {
   }
 
   claseEstado(estado: string): string {
-    if (estado === 'EN_VIAJE') {
-      return 'in-route';
-    }
-    if (estado === 'FINALIZADO') {
-      return 'completed';
-    }
-    if (estado === 'CANCELADO') {
-      return 'cancelled';
-    }
+    if (estado === 'EN_VIAJE') return 'in-route';
+    if (estado === 'FINALIZADO') return 'completed';
+    if (estado === 'CANCELADO') return 'cancelled';
     return 'programmed';
   }
 
@@ -259,9 +249,7 @@ export class Dashboard implements OnInit {
 
     for (const viaje of this.viajes) {
       const fecha = viaje.fechaFin ?? viaje.fechaInicio;
-      if (!fecha) {
-        continue;
-      }
+      if (!fecha) continue;
 
       actividades.push({
         tipo: 'viaje',
@@ -304,11 +292,7 @@ export class Dashboard implements OnInit {
     return `PROG-${id.toString().padStart(4, '0')}`;
   }
 
-  private precargarModulosSecundarios(): void {
-    // Estas peticiones no bloquean el dashboard. Alimentan la caché global para
-    // que Clientes, Mantenimiento y SOMMA abran más rápido al navegar.
+  private precargarClientes(): void {
     this.clienteService.listar().pipe(catchError(() => of([]))).subscribe();
-    this.mantenimientoService.listar().pipe(catchError(() => of([]))).subscribe();
-    this.sommaService.listar().pipe(catchError(() => of([]))).subscribe();
   }
 }
