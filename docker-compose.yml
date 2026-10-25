@@ -1,5 +1,8 @@
-# SITRAC - infraestructura distribuida para la sustentación
-# MySQL + RabbitMQ + Eureka + API Gateway + 10 microservicios + notification-service + Angular
+# SITRAC - infraestructura distribuida consolidada
+# MySQL + RabbitMQ + Eureka + API Gateway + 6 microservicios funcionales + Angular
+#
+# Microservicios funcionales:
+#   auth, comercial, operaciones, recursos, prevencion, notification
 #
 # Levantar todo:
 #   docker compose up -d --build
@@ -7,13 +10,13 @@
 # Frontend:          http://localhost:4200
 # API Gateway:       http://localhost:8080
 # Eureka Dashboard:  http://localhost:8761
-# RabbitMQ Admin:    http://localhost:15672  (guest / guest)
-# APIs directas:     http://localhost:8081 ... http://localhost:8091
+# RabbitMQ Admin:    http://localhost:15672  (sitrac / sitracmq)
 # MySQL:             localhost:3307 (root / sitrac)
 
 x-common-env: &common-env
   MYSQL_USER: root
   MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sitrac}
+  EUREKA_URL: http://eureka-server:8761/eureka/
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
   EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 
@@ -38,6 +41,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
       - ./database/sitrac_demo_exposicion.sql:/docker-entrypoint-initdb.d/01-sitrac_demo_exposicion.sql:ro
+      - ./database/sitrac_consolidado.sql:/docker-entrypoint-initdb.d/02-sitrac_consolidado.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
       interval: 5s
@@ -50,8 +54,8 @@ services:
     container_name: sitrac-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-sitrac}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-sitracmq}
       TZ: America/Lima
     ports:
       - "5672:5672"
@@ -103,80 +107,67 @@ services:
       <<: *common-env
       MYSQL_URL: "jdbc:mysql://mysql:3306/sitrac_auth?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
 
-  cliente-service:
+  comercial-service:
     <<: *service
     build:
       context: .
       args:
-        SERVICE: cliente-service
-    image: sitrac/cliente-service
-    container_name: sitrac-cliente-service
+        SERVICE: comercial-service
+    image: sitrac/comercial-service
+    container_name: sitrac-comercial-service
     ports:
       - "8082:8082"
     environment:
       <<: *common-env
-      MYSQL_CLIENTE_URL: "jdbc:mysql://mysql:3306/sitrac_clientes?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      MYSQL_COMERCIAL_URL: "jdbc:mysql://mysql:3306/sitrac_comercial?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
 
-  pedido-service:
+  recursos-service:
     <<: *service
     build:
       context: .
       args:
-        SERVICE: pedido-service
-    image: sitrac/pedido-service
-    container_name: sitrac-pedido-service
-    ports:
-      - "8083:8083"
-    environment:
-      <<: *common-env
-      MYSQL_PEDIDO_URL: "jdbc:mysql://mysql:3306/sitrac_pedidos?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      CLIENTE_SERVICE_URL: http://cliente-service:8082
-
-  conductor-service:
-    <<: *service
-    build:
-      context: .
-      args:
-        SERVICE: conductor-service
-    image: sitrac/conductor-service
-    container_name: sitrac-conductor-service
+        SERVICE: recursos-service
+    image: sitrac/recursos-service
+    container_name: sitrac-recursos-service
     ports:
       - "8084:8084"
     environment:
       <<: *common-env
-      MYSQL_CONDUCTOR_URL: "jdbc:mysql://mysql:3306/sitrac_conductores?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      MYSQL_RECURSOS_URL: "jdbc:mysql://mysql:3306/sitrac_recursos?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
 
-  flota-service:
+  prevencion-service:
     <<: *service
     build:
       context: .
       args:
-        SERVICE: flota-service
-    image: sitrac/flota-service
-    container_name: sitrac-flota-service
+        SERVICE: prevencion-service
+    image: sitrac/prevencion-service
+    container_name: sitrac-prevencion-service
     ports:
       - "8085:8085"
     environment:
       <<: *common-env
-      MYSQL_FLOTA_URL: "jdbc:mysql://mysql:3306/sitrac_flota?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      MYSQL_PREVENCION_URL: "jdbc:mysql://mysql:3306/sitrac_prevencion?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      OPERACIONES_SERVICE_URL: http://operaciones-service:8083
 
-  programacion-service:
+  operaciones-service:
     build:
       context: .
       args:
-        SERVICE: programacion-service
-    image: sitrac/programacion-service
-    container_name: sitrac-programacion-service
+        SERVICE: operaciones-service
+    image: sitrac/operaciones-service
+    container_name: sitrac-operaciones-service
     restart: unless-stopped
     ports:
-      - "8086:8086"
+      - "8083:8083"
     environment:
       <<: *common-env
-      MYSQL_PROGRAMACION_URL: "jdbc:mysql://mysql:3306/sitrac_programaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      MYSQL_OPERACIONES_URL: "jdbc:mysql://mysql:3306/sitrac_operaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
+      PREVENCION_SERVICE_URL: http://prevencion-service:8085
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-sitrac}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
     depends_on:
       mysql:
         condition: service_healthy
@@ -184,78 +175,6 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_started
-
-  viaje-service:
-    build:
-      context: .
-      args:
-        SERVICE: viaje-service
-    image: sitrac/viaje-service
-    container_name: sitrac-viaje-service
-    restart: unless-stopped
-    ports:
-      - "8087:8087"
-    environment:
-      <<: *common-env
-      MYSQL_VIAJE_URL: "jdbc:mysql://mysql:3306/sitrac_viajes?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      PROGRAMACION_SERVICE_URL: http://programacion-service:8086
-      SOMMA_SERVICE_URL: http://somma-service:8089
-      SPRING_RABBITMQ_HOST: rabbitmq
-      SPRING_RABBITMQ_PORT: 5672
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      eureka-server:
-        condition: service_started
-
-  mantenimiento-service:
-    <<: *service
-    build:
-      context: .
-      args:
-        SERVICE: mantenimiento-service
-    image: sitrac/mantenimiento-service
-    container_name: sitrac-mantenimiento-service
-    ports:
-      - "8088:8088"
-    environment:
-      <<: *common-env
-      MYSQL_MANTENIMIENTO_URL: "jdbc:mysql://mysql:3306/sitrac_mantenimiento?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      FLOTA_SERVICE_URL: http://flota-service:8085
-
-  somma-service:
-    <<: *service
-    build:
-      context: .
-      args:
-        SERVICE: somma-service
-    image: sitrac/somma-service
-    container_name: sitrac-somma-service
-    ports:
-      - "8089:8089"
-    environment:
-      <<: *common-env
-      MYSQL_SOMMA_URL: "jdbc:mysql://mysql:3306/sitrac_somma?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      PROGRAMACION_SERVICE_URL: http://programacion-service:8086
-
-  combustible-service:
-    <<: *service
-    build:
-      context: .
-      args:
-        SERVICE: combustible-service
-    image: sitrac/combustible-service
-    container_name: sitrac-combustible-service
-    ports:
-      - "8090:8090"
-    environment:
-      <<: *common-env
-      MYSQL_COMBUSTIBLE_URL: "jdbc:mysql://mysql:3306/sitrac_combustible?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      PROGRAMACION_SERVICE_URL: http://programacion-service:8086
 
   notification-service:
     build:
@@ -271,8 +190,8 @@ services:
       EUREKA_URL: http://eureka-server:8761/eureka/
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_USER: ${RABBITMQ_USER:-sitrac}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
       SITRAC_MAIL_ENABLED: ${SITRAC_MAIL_ENABLED:-false}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -284,11 +203,9 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_started
-      programacion-service:
+      comercial-service:
         condition: service_started
-      pedido-service:
-        condition: service_started
-      cliente-service:
+      operaciones-service:
         condition: service_started
 
   frontend:
