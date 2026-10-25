@@ -24,7 +24,12 @@ jobs:
           cache: maven
 
       - name: Build backend
-        run: ./mvnw -B -DskipTests package
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -DskipTests package
+
+      - name: Validate Docker Compose
+        run: docker compose config -q
 
   frontend:
     runs-on: ubuntu-latest
