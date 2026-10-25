@@ -1,128 +1,145 @@
-# SITRAC - Guía de datos para exposición
+# SITRAC — Guía de datos y demostración
 
-Esta guía acompaña al archivo `sitrac_demo_exposicion.sql`.
+Esta guía describe el flujo recomendado para demostrar SITRAC con el alcance final del proyecto.
 
-## Objetivo
+## Inicio del entorno
 
-Dejar SITRAC con una base pequeña, coherente y fácil de explicar durante la exposición. El script elimina y recrea las 10 bases del proyecto y carga datos mínimos representativos.
+Desde la raíz del repositorio:
 
-## Volumen de datos
+```bash
+docker compose down -v
+docker compose up -d --build
+```
 
-- 5 usuarios del sistema, uno por rol principal.
-- 10 clientes.
-- 10 pedidos.
-- 10 conductores.
-- 10 unidades de flota: 5 tractos y 5 semirremolques.
-- 3 programaciones.
-- 3 viajes.
-- 2 mantenimientos.
-- 5 registros SOMMA.
-- 2 abastecimientos de combustible.
+Verificar:
 
-## Credenciales
+```bash
+docker compose ps
+```
+
+Accesos principales:
+
+- Frontend: http://localhost:4200
+- API Gateway: http://localhost:8080
+- Eureka: http://localhost:8761
+- RabbitMQ Management: http://localhost:15672
+
+RabbitMQ:
+
+- Usuario: `sitrac`
+- Contraseña: `sitracmq`
+
+## Usuarios de demostración
 
 | Rol | Usuario | Contraseña |
 |---|---|---|
 | ADMIN | `admin.sitrac` | `Admin123*` |
 | OPERADOR | `operador.sitrac` | `Operador123*` |
-| SOMMA | `somma.sitrac` | `Somma123*` |
-| MANTENIMIENTO | `mantenimiento.sitrac` | `Mantenimiento123*` |
+| COMBUSTIBLE | `combustible.sitrac` | `Combustible123*` |
 | SUPERVISOR | `supervisor.sitrac` | `Supervisor123*` |
 
-## Escenarios listos para demostrar
+## Flujo recomendado para la exposición
 
-### 1. Flujo cerrado completo
+### 1. Operaciones
 
-- Pedido: `PED-0001`
-- Cliente: CEMENTOS PACASMAYO S.A.A.
-- Carga: CAL_GRANEL
-- Programación: `PROG-0001`
-- Viaje: `VIA-0001`
-- Estado final: FINALIZADO
-- Tracto: `T1A-201`
-- Semirremolque: `S1A-301` BOMBONA
-- Conductor: JUAN CARLOS RAMIREZ TORRES
+Ingresar como `operador.sitrac`.
 
-Sirve para explicar todo el ciclo ya concluido y cómo los recursos vuelven a DISPONIBLE.
+1. Mostrar clientes y pedidos.
+2. Seleccionar o crear un pedido en estado disponible.
+3. Ir a Programación.
+4. Seleccionar conductor, tracto y semirremolque.
+5. Confirmar la programación.
 
-### 2. Operación programada, lista para iniciar
+Durante este paso explicar que `programacion-service` consulta de forma síncrona a pedido, conductor y flota mediante OpenFeign antes de guardar la asignación.
 
-- Pedido: `PED-0002`
-- Carga: CEMENTO_BOLSA
-- Programación: `PROG-0002`
-- Viaje: `VIA-0002`
-- Estado del viaje: PROGRAMADO
-- Tracto: `T1A-202`
-- Semirremolque: `S1A-302` PLATAFORMA
-- Charla SOMMA: CERRADA
+### 2. Evento de programación
 
-Sirve para demostrar que CEMENTO_BOLSA requiere PLATAFORMA y que el viaje ya puede iniciarse porque la charla SOMMA está cerrada.
+Después de crear la programación:
 
-### 3. Viaje actualmente en ejecución
+```text
+programacion-service
+        ↓ PROGRAMACION_CREADA
+     RabbitMQ
+        ↓
+combustible-service
+```
 
-- Pedido: `PED-0003`
-- Carga: MAQUINARIA
-- Programación: `PROG-0003`
-- Viaje: `VIA-0003`
-- Estado: EN_VIAJE
-- Tracto: `T1A-203`
-- Semirremolque: `S1A-303` CAMA_BAJA
-- Conductor: MIGUEL ALEJANDRO ROJAS MENDOZA
+`combustible-service` crea automáticamente una solicitud en estado `PENDIENTE`.
 
-Sirve para demostrar combustible y finalización de viaje.
+### 3. Área de Combustible
 
-### 4. Mantenimiento enlazado con Flota
+Cerrar sesión e ingresar como:
 
-- Tracto: `T1A-204`
-- Estado de flota: MANTENIMIENTO
-- Mantenimiento: `MANT-0001`
-- Tipo: CORRECTIVO
-- Estado: EN_PROCESO
+```text
+combustible.sitrac / Combustible123*
+```
 
-Sirve para explicar que una unidad en mantenimiento deja de estar disponible para una programación.
+1. Abrir Combustible.
+2. Localizar la solicitud pendiente.
+3. Pulsar **Atender**.
+4. Seleccionar el punto de abastecimiento.
+5. Ingresar la cantidad autorizada de galones.
+6. Confirmar.
 
-### 5. Pedidos libres para demostración en vivo
+La aplicación publica `ABASTECIMIENTO_CONFIRMADO` y `notification-service` genera la notificación al conductor.
 
-`PED-0004` a `PED-0010` permanecen REGISTRADOS. Se pueden usar para crear una nueva programación durante la exposición.
+Si `SITRAC_MAIL_ENABLED=false`, el correo se observa en los logs del servicio de notificaciones.
 
-Hay recursos disponibles para nuevas pruebas:
+### 4. Viaje
 
-- Tracto disponible: `T1A-205`
-- Semirremolque BOMBONA disponible: `S1A-304`
-- Semirremolque CAMA_BAJA disponible: `S1A-305`
-- Conductores disponibles: IDs 4 al 10.
+Volver a ingresar como Operador.
 
-## Reglas de negocio fáciles de explicar
+1. Abrir Viajes.
+2. Crear o localizar el viaje asociado a la programación.
+3. Iniciar el viaje registrando fecha y kilometraje inicial.
+4. Mostrar el estado `EN_VIAJE`.
+5. Finalizar registrando fecha y kilometraje final.
 
-- CAL_GRANEL -> BOMBONA.
-- CEMENTO_BOLSA -> PLATAFORMA.
-- MAQUINARIA / CARGA_ANCHA / ESPECIAL -> CAMA_BAJA.
+Al finalizar:
+
+- pedido y programación actualizan su estado;
+- conductor, tracto y semirremolque son liberados;
+- `viaje-service` publica `VIAJE_FINALIZADO`;
+- `notification-service` genera una constancia PDF;
+- el cliente recibe el correo de cierre con la constancia adjunta, o se registra la evidencia en logs si el correo real está desactivado.
+
+## Evidencias técnicas recomendadas
+
+Durante la exposición mostrar brevemente:
+
+1. **Eureka Server:** servicios activos registrados.
+2. **RabbitMQ:** exchange `sitrac.events` y colas `sitrac.combustible` / `sitrac.notificaciones`.
+3. **Docker:** contenedores levantados con `docker compose ps`.
+4. **Código:** `programacion-service` para OpenFeign y publicación del evento.
+5. **Código:** `combustible-service` para consumo de `PROGRAMACION_CREADA`.
+6. **Código:** `notification-service` para correo al conductor y constancia al cliente.
+
+## Datos disponibles
+
+El dataset histórico conserva clientes, pedidos, conductores, flota, programaciones, viajes y registros de combustible útiles para la demostración. El archivo `sitrac_alcance_final.sql` se ejecuta después del dataset base para retirar roles y bases que ya no pertenecen al alcance y para agregar correo a los conductores.
+
+Los pedidos que permanezcan en estado `REGISTRADO` pueden utilizarse para crear una programación durante la sustentación.
+
+## Reglas principales para explicar
+
+- CAL_GRANEL → BOMBONA.
+- CEMENTO_BOLSA → PLATAFORMA.
+- MAQUINARIA / CARGA_ANCHA / ESPECIAL → CAMA_BAJA.
 - Una programación reserva conductor, tracto y semirremolque.
-- Para iniciar el viaje debe existir una CHARLA SOMMA CERRADA.
-- Al finalizar el viaje se finalizan el pedido y la programación y se liberan los recursos.
-- Una unidad EN_PROCESO de mantenimiento pasa a estado MANTENIMIENTO y no puede ser programada.
+- La programación genera una solicitud de abastecimiento pendiente.
+- Al finalizar el viaje se finalizan pedido y programación y se liberan los recursos.
+- El conductor recibe la información del abastecimiento sin ingresar a SITRAC.
+- El cliente recibe la constancia al finalizar el servicio sin ingresar a SITRAC.
 
-## Restauración en Windows / Git Bash
+## Reinicio de datos
 
-Desde la raíz del proyecto:
-
-```bash
-"/c/Program Files/MySQL/MySQL Server 9.4/bin/mysql.exe" -u root -p < database/sitrac_demo_exposicion.sql
-```
-
-Después verificar:
+Para volver al dataset inicial:
 
 ```bash
-"/c/Program Files/MySQL/MySQL Server 9.4/bin/mysql.exe" -u root -p -e "SELECT COUNT(*) clientes FROM sitrac_clientes.clientes; SELECT COUNT(*) pedidos FROM sitrac_pedidos.pedidos; SELECT (SELECT COUNT(*) FROM sitrac_flota.tractos) + (SELECT COUNT(*) FROM sitrac_flota.semirremolques) AS unidades; SELECT COUNT(*) conductores FROM sitrac_conductores.conductores;"
+docker compose down -v
+docker compose up -d --build
 ```
-
-Resultado esperado:
-
-- clientes = 10
-- pedidos = 10
-- unidades = 10
-- conductores = 10
 
 ## Nota sobre privacidad
 
-Los nombres de empresas se usan como ejemplos del sector. Los datos personales de conductores, DNI, teléfonos y licencias son ficticios para no publicar información personal real en el repositorio.
+Los datos personales usados para conductores en el dataset son ficticios y tienen fines de demostración. Para una presentación con correo real, se debe modificar únicamente el email del conductor y del cliente que participen en la prueba.
