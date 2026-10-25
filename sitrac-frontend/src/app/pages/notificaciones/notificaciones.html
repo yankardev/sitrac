@@ -2,7 +2,7 @@
   <div>
     <span class="breadcrumb">Sistema / Notificaciones</span>
     <h1>Notificaciones</h1>
-    <p>Evidencia de los eventos procesados por notification-service.</p>
+    <p>Seguimiento de las comunicaciones automáticas al conductor y al cliente.</p>
   </div>
 
   <button class="refresh-button" type="button" (click)="cargar()" [disabled]="cargando">
@@ -11,8 +11,9 @@
 </header>
 
 <div class="info-banner">
-  <strong>¿Qué significa el estado?</strong>
-  <span><b>Enviada</b>: el correo salió por SMTP. <b>Simulada</b>: el evento y el contenido se generaron correctamente, pero el correo está desactivado en el entorno de demostración.</span>
+  <strong>Flujo que demuestra esta pantalla</strong>
+  <span><b>Combustible confirmado → conductor:</b> se genera la comunicación con punto y galones autorizados. <b>Viaje finalizado → cliente:</b> se genera el aviso de cierre y la constancia PDF.</span>
+  <span><b>Generada · modo demo</b> significa que SITRAC procesó el evento y preparó el contenido, pero el envío SMTP está desactivado en este entorno.</span>
 </div>
 
 <div class="alert error" *ngIf="error">
@@ -24,24 +25,24 @@
   <article class="summary-card">
     <div class="summary-icon blue">🔔</div>
     <div>
-      <span>Total registradas</span>
+      <span>Total comunicaciones</span>
       <strong>{{ registros.length }}</strong>
     </div>
   </article>
 
   <article class="summary-card">
-    <div class="summary-icon green">✓</div>
+    <div class="summary-icon green">🚚</div>
     <div>
-      <span>Enviadas</span>
-      <strong>{{ totalEnviadas }}</strong>
+      <span>Al conductor</span>
+      <strong>{{ totalConductor }}</strong>
     </div>
   </article>
 
   <article class="summary-card">
-    <div class="summary-icon orange">◉</div>
+    <div class="summary-icon orange">✉</div>
     <div>
-      <span>Simuladas</span>
-      <strong>{{ totalSimuladas }}</strong>
+      <span>Al cliente</span>
+      <strong>{{ totalCliente }}</strong>
     </div>
   </article>
 
@@ -57,8 +58,8 @@
 <section class="panel">
   <div class="panel-header">
     <div>
-      <h2>Registro de evidencias</h2>
-      <p>Eventos de abastecimiento y cierre de viaje procesados de forma asíncrona.</p>
+      <h2>Registro de comunicaciones automáticas</h2>
+      <p>Evidencia de los eventos procesados de forma asíncrona por RabbitMQ y notification-service.</p>
     </div>
   </div>
 
@@ -69,7 +70,7 @@
 
   <div class="empty-state" *ngIf="!cargando && registros.length === 0">
     <div class="empty-icon">🔔</div>
-    <h3>Aún no hay notificaciones registradas</h3>
+    <h3>Aún no hay comunicaciones registradas</h3>
     <p>Confirma un abastecimiento o finaliza un viaje para generar la primera evidencia.</p>
   </div>
 
@@ -78,10 +79,10 @@
       <thead>
         <tr>
           <th>Fecha</th>
-          <th>Evento</th>
+          <th>Comunicación</th>
           <th>Referencia</th>
           <th>Destinatario</th>
-          <th>Evidencia</th>
+          <th>Resultado</th>
           <th>Estado</th>
         </tr>
       </thead>
@@ -91,18 +92,20 @@
             <strong>{{ registro.fechaRegistro | date:'dd/MM/yyyy HH:mm' }}</strong>
           </td>
           <td>
-            <strong>{{ etiquetaEvento(registro.tipoEvento) }}</strong>
+            <strong>{{ comunicacion(registro) }}</strong>
             <span class="secondary">{{ registro.asunto }}</span>
           </td>
           <td>
             <strong>{{ registro.referencia || '—' }}</strong>
           </td>
           <td>
-            <span>{{ registro.destinatario || 'Sin correo registrado' }}</span>
+            <strong>{{ destinatarioTipo(registro) }}</strong>
+            <span class="secondary">{{ registro.destinatario || 'Sin correo registrado' }}</span>
           </td>
           <td>
-            <span>{{ registro.detalle }}</span>
-            <span class="attachment" *ngIf="registro.tieneAdjunto">PDF adjunto generado</span>
+            <span>{{ resultado(registro) }}</span>
+            <span class="secondary">{{ registro.detalle }}</span>
+            <span class="attachment" *ngIf="registro.tieneAdjunto">Constancia PDF generada</span>
           </td>
           <td>
             <span class="status" [ngClass]="claseEstado(registro.estado)">
