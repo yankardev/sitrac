@@ -22,8 +22,7 @@ export class Seguridad implements OnInit {
   readonly roles: Array<{ valor: RolUsuario; etiqueta: string }> = [
     { valor: 'ADMIN', etiqueta: 'Administrador' },
     { valor: 'OPERADOR', etiqueta: 'Operador' },
-    { valor: 'SOMMA', etiqueta: 'SOMMA' },
-    { valor: 'MANTENIMIENTO', etiqueta: 'Mantenimiento' },
+    { valor: 'COMBUSTIBLE', etiqueta: 'Combustible' },
     { valor: 'SUPERVISOR', etiqueta: 'Supervisor' }
   ];
 
