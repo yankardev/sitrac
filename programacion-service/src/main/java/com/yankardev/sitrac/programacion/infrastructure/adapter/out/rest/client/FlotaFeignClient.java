@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.math.BigDecimal;
 
-@FeignClient(name = "flota-service")
+@FeignClient(name = "recursos-service")
 public interface FlotaFeignClient {
 
     @GetMapping("/api/tractos/{id}")
