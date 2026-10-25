@@ -1,3 +1,0 @@
-package com.yankardev.sitrac.mantenimiento.infrastructure.adapter.in.rest.dto;
-import com.yankardev.sitrac.mantenimiento.domain.model.*;import java.math.BigDecimal;import java.time.LocalDate;
-public record MantenimientoResponse(Long id,TipoUnidad tipoUnidad,Long unidadId,TipoMantenimiento tipoMantenimiento,LocalDate fechaInicio,LocalDate fechaFin,String descripcion,BigDecimal costo,EstadoMantenimiento estado){}

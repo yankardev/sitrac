@@ -1,1 +1,0 @@
-package com.yankardev.sitrac.mantenimiento.domain.model;public enum TipoUnidad{TRACTO,SEMIRREMOLQUE}

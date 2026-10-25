@@ -1,1 +1,0 @@
-package com.yankardev.sitrac.mantenimiento.application.exception;public class MantenimientoNoEncontradoException extends RuntimeException{public MantenimientoNoEncontradoException(Long id){super("Mantenimiento no encontrado con id: "+id);}}

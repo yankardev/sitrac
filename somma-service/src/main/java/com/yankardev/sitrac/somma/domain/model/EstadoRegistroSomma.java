@@ -1,1 +1,0 @@
-package com.yankardev.sitrac.somma.domain.model;public enum EstadoRegistroSomma{REGISTRADO,CERRADO,CANCELADO}
