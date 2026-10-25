@@ -1,0 +1,77 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - http://localhost:4200
+                allowedMethods: [GET, POST, PUT, DELETE, PATCH, OPTIONS]
+                allowedHeaders: '*'
+                allowCredentials: true
+          routes:
+            - id: auth-service
+              uri: lb://auth-service
+              predicates:
+                - Path=/api/auth/**
+            - id: cliente-service
+              uri: lb://cliente-service
+              predicates:
+                - Path=/api/clientes/**
+            - id: pedido-service
+              uri: lb://pedido-service
+              predicates:
+                - Path=/api/pedidos/**
+            - id: conductor-service
+              uri: lb://conductor-service
+              predicates:
+                - Path=/api/conductores/**
+            - id: flota-service-tractos
+              uri: lb://flota-service
+              predicates:
+                - Path=/api/tractos/**
+            - id: flota-service-semirremolques
+              uri: lb://flota-service
+              predicates:
+                - Path=/api/semirremolques/**
+            - id: programacion-service
+              uri: lb://programacion-service
+              predicates:
+                - Path=/api/programaciones/**
+            - id: viaje-service
+              uri: lb://viaje-service
+              predicates:
+                - Path=/api/viajes/**
+            - id: mantenimiento-service
+              uri: lb://mantenimiento-service
+              predicates:
+                - Path=/api/mantenimientos/**
+            - id: somma-service
+              uri: lb://somma-service
+              predicates:
+                - Path=/api/somma/**
+            - id: combustible-service
+              uri: lb://combustible-service
+              predicates:
+                - Path=/api/combustible/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
