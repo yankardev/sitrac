@@ -219,7 +219,8 @@ export class Combustible implements OnInit {
   }
 
   claseNotificacion(solicitud: SolicitudAbastecimiento): string {
-    return this.notificacionDeSolicitud(solicitud)?.estado?.toLowerCase() || 'pendiente';
+    const estado = this.notificacionDeSolicitud(solicitud)?.estado;
+    return estado === 'ENVIADA' || estado === 'SIMULADA' ? 'internal' : 'third-party';
   }
 
   detalleNotificacion(solicitud: SolicitudAbastecimiento): string {
