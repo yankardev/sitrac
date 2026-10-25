@@ -22,46 +22,50 @@ spring:
               uri: lb://auth-service
               predicates:
                 - Path=/api/auth/**
-            - id: cliente-service
-              uri: lb://cliente-service
+
+            - id: comercial-clientes
+              uri: lb://comercial-service
               predicates:
                 - Path=/api/clientes/**
-            - id: pedido-service
-              uri: lb://pedido-service
+            - id: comercial-pedidos
+              uri: lb://comercial-service
               predicates:
                 - Path=/api/pedidos/**
-            - id: conductor-service
-              uri: lb://conductor-service
+
+            - id: recursos-conductores
+              uri: lb://recursos-service
               predicates:
                 - Path=/api/conductores/**
-            - id: flota-service-tractos
-              uri: lb://flota-service
+            - id: recursos-tractos
+              uri: lb://recursos-service
               predicates:
                 - Path=/api/tractos/**
-            - id: flota-service-semirremolques
-              uri: lb://flota-service
+            - id: recursos-semirremolques
+              uri: lb://recursos-service
               predicates:
                 - Path=/api/semirremolques/**
-            - id: programacion-service
-              uri: lb://programacion-service
-              predicates:
-                - Path=/api/programaciones/**
-            - id: viaje-service
-              uri: lb://viaje-service
-              predicates:
-                - Path=/api/viajes/**
-            - id: mantenimiento-service
-              uri: lb://mantenimiento-service
+            - id: recursos-mantenimientos
+              uri: lb://recursos-service
               predicates:
                 - Path=/api/mantenimientos/**
-            - id: somma-service
-              uri: lb://somma-service
+
+            - id: operaciones-programaciones
+              uri: lb://operaciones-service
               predicates:
-                - Path=/api/somma/**
-            - id: combustible-service
-              uri: lb://combustible-service
+                - Path=/api/programaciones/**
+            - id: operaciones-viajes
+              uri: lb://operaciones-service
+              predicates:
+                - Path=/api/viajes/**
+            - id: operaciones-combustible
+              uri: lb://operaciones-service
               predicates:
                 - Path=/api/combustible/**
+
+            - id: prevencion-somma
+              uri: lb://prevencion-service
+              predicates:
+                - Path=/api/somma/**
 
 eureka:
   client:
