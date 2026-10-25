@@ -32,6 +32,7 @@ public class ConductorController {
                 .categoriaLicencia(request.categoriaLicencia())
                 .fechaVencimientoLicencia(request.fechaVencimientoLicencia())
                 .telefono(request.telefono())
+                .email(request.email())
                 .build());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(creado));
@@ -65,6 +66,7 @@ public class ConductorController {
                 .categoriaLicencia(request.categoriaLicencia())
                 .fechaVencimientoLicencia(request.fechaVencimientoLicencia())
                 .telefono(request.telefono())
+                .email(request.email())
                 .disponible(request.disponible())
                 .activo(request.activo())
                 .build());
@@ -103,6 +105,7 @@ public class ConductorController {
                 conductor.getCategoriaLicencia(),
                 conductor.getFechaVencimientoLicencia(),
                 conductor.getTelefono(),
+                conductor.getEmail(),
                 conductor.isDisponible(),
                 conductor.isActivo()
         );
