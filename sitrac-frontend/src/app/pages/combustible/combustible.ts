@@ -47,6 +47,7 @@ export class Combustible implements OnInit {
 
   cargando = false;
   confirmando = false;
+  notificandoId: number | null = null;
   solicitudSeleccionada: SolicitudAbastecimiento | null = null;
   mensaje = '';
   error = '';
@@ -161,16 +162,36 @@ export class Combustible implements OnInit {
           this.solicitudes = this.solicitudes.map(item =>
             item.id === actualizada.id ? actualizada : item
           );
-          this.mensaje = `Solicitud #SOL-${this.codigo(actualizada.id)} confirmada. RabbitMQ envió el evento para notificar al conductor.`;
+          this.mensaje = `Solicitud #SOL-${this.codigo(actualizada.id)} confirmada. RabbitMQ publicó el evento para notificar al conductor.`;
           this.solicitudSeleccionada = null;
           this.formularioConfirmacion = this.confirmacionVacia();
-
-          // La notificación se procesa de forma asíncrona. Se refresca la evidencia
-          // unos instantes después para que el usuario vea el resultado sin salir del módulo.
           window.setTimeout(() => this.cargarNotificaciones(), 900);
         },
         error: error => {
           this.error = this.mensajeError(error, 'No se pudo confirmar la solicitud.');
+        }
+      });
+  }
+
+  generarNotificacion(solicitud: SolicitudAbastecimiento): void {
+    if (this.notificacionDeSolicitud(solicitud) || this.notificandoId !== null) return;
+
+    this.notificandoId = solicitud.id;
+    this.error = '';
+    this.mensaje = '';
+
+    this.combustibleService.generarNotificacion(solicitud.id)
+      .pipe(finalize(() => {
+        this.notificandoId = null;
+        this.cdr.detectChanges();
+      }))
+      .subscribe({
+        next: () => {
+          this.mensaje = `Evento de notificación regenerado para la solicitud #SOL-${this.codigo(solicitud.id)}.`;
+          window.setTimeout(() => this.cargarNotificaciones(), 900);
+        },
+        error: error => {
+          this.error = this.mensajeError(error, 'No se pudo generar la notificación al conductor.');
         }
       });
   }
@@ -187,7 +208,7 @@ export class Combustible implements OnInit {
 
   etiquetaNotificacion(solicitud: SolicitudAbastecimiento): string {
     const registro = this.notificacionDeSolicitud(solicitud);
-    if (!registro) return 'Procesando / sin evidencia';
+    if (!registro) return 'Sin evidencia';
 
     switch (registro.estado) {
       case 'ENVIADA': return 'Correo enviado';
@@ -204,18 +225,18 @@ export class Combustible implements OnInit {
   detalleNotificacion(solicitud: SolicitudAbastecimiento): string {
     const registro = this.notificacionDeSolicitud(solicitud);
     if (!registro) {
-      return 'La confirmación existe, pero aún no hay evidencia registrada por notification-service.';
+      return 'La solicitud fue confirmada, pero no existe evidencia de comunicación al conductor.';
     }
     if (registro.estado === 'ENVIADA') {
-      return `Enviado a ${registro.destinatario}`;
+      return `Correo enviado a ${registro.destinatario}`;
     }
     if (registro.estado === 'SIMULADA') {
-      return `Contenido generado para ${registro.destinatario}; SMTP desactivado en demo.`;
+      return `Contenido generado para ${registro.destinatario}; SMTP está desactivado en la demo.`;
     }
     if (registro.estado === 'OMITIDA') {
-      return 'No se pudo enviar porque el conductor no tiene correo registrado.';
+      return 'El conductor no tiene un correo válido registrado.';
     }
-    return registro.detalle || 'La notificación presentó un error.';
+    return registro.detalle || 'La comunicación presentó un error.';
   }
 
   codigo(id: number): string {
