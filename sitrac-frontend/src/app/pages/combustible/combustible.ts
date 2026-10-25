@@ -4,16 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { catchError, finalize, forkJoin, of } from 'rxjs';
 
 import {
-  AbastecimientoCombustible,
   ConfirmarSolicitudAbastecimiento,
   SolicitudAbastecimiento
 } from '../../core/models/combustible.model';
+import { RegistroNotificacion } from '../../core/models/notificacion.model';
 import {
   ConductorOperacion,
   Programacion as ProgramacionModel,
   TractoOperacion
 } from '../../core/models/programacion.model';
 import { CombustibleService } from '../../core/services/combustible.service';
+import { NotificacionService } from '../../core/services/notificacion.service';
 import { ProgramacionService } from '../../core/services/programacion.service';
 
 @Component({
@@ -24,6 +25,7 @@ import { ProgramacionService } from '../../core/services/programacion.service';
 })
 export class Combustible implements OnInit {
   private readonly combustibleService = inject(CombustibleService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly programacionService = inject(ProgramacionService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -38,7 +40,7 @@ export class Combustible implements OnInit {
   ];
 
   solicitudes: SolicitudAbastecimiento[] = [];
-  abastecimientos: AbastecimientoCombustible[] = [];
+  notificaciones: RegistroNotificacion[] = [];
   programaciones: ProgramacionModel[] = [];
   conductores: ConductorOperacion[] = [];
   tractos: TractoOperacion[] = [];
@@ -70,6 +72,10 @@ export class Combustible implements OnInit {
     );
   }
 
+  get totalNotificacionesConductor(): number {
+    return this.notificaciones.filter(item => item.tipoEvento === 'ABASTECIMIENTO_CONFIRMADO').length;
+  }
+
   cargarDatos(): void {
     this.cargando = true;
     this.error = '';
@@ -78,8 +84,8 @@ export class Combustible implements OnInit {
       solicitudes: this.combustibleService.listarSolicitudes().pipe(
         catchError(() => of([] as SolicitudAbastecimiento[]))
       ),
-      abastecimientos: this.combustibleService.listar().pipe(
-        catchError(() => of([] as AbastecimientoCombustible[]))
+      notificaciones: this.notificacionService.listar().pipe(
+        catchError(() => of([] as RegistroNotificacion[]))
       ),
       programaciones: this.programacionService.listar().pipe(
         catchError(() => of([] as ProgramacionModel[]))
@@ -98,7 +104,7 @@ export class Combustible implements OnInit {
       .subscribe({
         next: data => {
           this.solicitudes = [...data.solicitudes].sort((a, b) => b.id - a.id);
-          this.abastecimientos = [...data.abastecimientos].sort((a, b) => b.id - a.id);
+          this.notificaciones = [...data.notificaciones];
           this.programaciones = data.programaciones;
           this.conductores = data.conductores;
           this.tractos = data.tractos;
@@ -155,14 +161,61 @@ export class Combustible implements OnInit {
           this.solicitudes = this.solicitudes.map(item =>
             item.id === actualizada.id ? actualizada : item
           );
-          this.mensaje = `Solicitud #SOL-${this.codigo(actualizada.id)} confirmada. Se generó la notificación al conductor.`;
+          this.mensaje = `Solicitud #SOL-${this.codigo(actualizada.id)} confirmada. RabbitMQ envió el evento para notificar al conductor.`;
           this.solicitudSeleccionada = null;
           this.formularioConfirmacion = this.confirmacionVacia();
+
+          // La notificación se procesa de forma asíncrona. Se refresca la evidencia
+          // unos instantes después para que el usuario vea el resultado sin salir del módulo.
+          window.setTimeout(() => this.cargarNotificaciones(), 900);
         },
         error: error => {
           this.error = this.mensajeError(error, 'No se pudo confirmar la solicitud.');
         }
       });
+  }
+
+  notificacionDeSolicitud(solicitud: SolicitudAbastecimiento): RegistroNotificacion | undefined {
+    const referenciaSolicitud = `SOL-${solicitud.id}`;
+    const referenciaProgramacion = `PROG-${solicitud.programacionId}`;
+
+    return this.notificaciones.find(item =>
+      item.tipoEvento === 'ABASTECIMIENTO_CONFIRMADO' &&
+      (item.referencia?.includes(referenciaSolicitud) || item.referencia?.includes(referenciaProgramacion))
+    );
+  }
+
+  etiquetaNotificacion(solicitud: SolicitudAbastecimiento): string {
+    const registro = this.notificacionDeSolicitud(solicitud);
+    if (!registro) return 'Procesando / sin evidencia';
+
+    switch (registro.estado) {
+      case 'ENVIADA': return 'Correo enviado';
+      case 'SIMULADA': return 'Generada (modo demo)';
+      case 'OMITIDA': return 'Sin correo registrado';
+      case 'ERROR': return 'Error de notificación';
+    }
+  }
+
+  claseNotificacion(solicitud: SolicitudAbastecimiento): string {
+    return this.notificacionDeSolicitud(solicitud)?.estado?.toLowerCase() || 'pendiente';
+  }
+
+  detalleNotificacion(solicitud: SolicitudAbastecimiento): string {
+    const registro = this.notificacionDeSolicitud(solicitud);
+    if (!registro) {
+      return 'La confirmación existe, pero aún no hay evidencia registrada por notification-service.';
+    }
+    if (registro.estado === 'ENVIADA') {
+      return `Enviado a ${registro.destinatario}`;
+    }
+    if (registro.estado === 'SIMULADA') {
+      return `Contenido generado para ${registro.destinatario}; SMTP desactivado en demo.`;
+    }
+    if (registro.estado === 'OMITIDA') {
+      return 'No se pudo enviar porque el conductor no tiene correo registrado.';
+    }
+    return registro.detalle || 'La notificación presentó un error.';
   }
 
   codigo(id: number): string {
@@ -185,6 +238,15 @@ export class Combustible implements OnInit {
   rutaProgramacion(programacionId: number): string {
     const programacion = this.programaciones.find(item => item.id === programacionId);
     return programacion ? `Pedido #${programacion.pedidoId}` : 'Programación registrada';
+  }
+
+  private cargarNotificaciones(): void {
+    this.notificacionService.listar().subscribe({
+      next: registros => {
+        this.notificaciones = [...registros];
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   private confirmacionVacia(): ConfirmarSolicitudAbastecimiento {
