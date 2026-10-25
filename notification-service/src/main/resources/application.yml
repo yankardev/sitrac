@@ -4,6 +4,14 @@ server:
 spring:
   application:
     name: notification-service
+  datasource:
+    url: ${MYSQL_NOTIFICATION_URL:jdbc:mysql://localhost:3306/sitrac_notificaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima}
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:sitrac}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
