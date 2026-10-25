@@ -146,6 +146,14 @@
               {{ etiquetaNotificacion(solicitud) }}
             </span>
             <span class="secondary">{{ detalleNotificacion(solicitud) }}</span>
+            <button
+              *ngIf="!notificacionDeSolicitud(solicitud)"
+              class="inline-action"
+              type="button"
+              [disabled]="notificandoId !== null"
+              (click)="generarNotificacion(solicitud)">
+              {{ notificandoId === solicitud.id ? 'Generando...' : 'Generar notificación' }}
+            </button>
           </td>
         </tr>
       </tbody>
