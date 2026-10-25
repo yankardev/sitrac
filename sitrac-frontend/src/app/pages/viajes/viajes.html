@@ -289,15 +289,25 @@
           <input name="fechaOperacion" type="datetime-local" [(ngModel)]="operacion.fecha" required />
         </label>
 
+        <div
+          class="info-card full"
+          *ngIf="tipoOperacion === 'FINALIZAR' && viajeSeleccionado?.kilometrajeInicial !== null">
+          <span>Kilometraje de salida registrado</span>
+          <strong>{{ viajeSeleccionado?.kilometrajeInicial | number:'1.0-1' }} km</strong>
+          <p>Ingresa un kilometraje final igual o mayor a este valor.</p>
+        </div>
+
         <label class="field full">
           <span>{{ tipoOperacion === 'INICIAR' ? 'Kilometraje inicial *' : 'Kilometraje final *' }}</span>
           <input
             name="kilometraje"
             type="number"
             [(ngModel)]="operacion.kilometraje"
-            min="0"
+            [attr.min]="kilometrajeMinimoOperacion()"
             step="0.1"
-            placeholder="0"
+            [placeholder]="tipoOperacion === 'FINALIZAR'
+              ? 'Mínimo ' + kilometrajeMinimoOperacion() + ' km'
+              : 'Ingresa el kilometraje de salida'"
             required
           />
         </label>
