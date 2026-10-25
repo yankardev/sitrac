@@ -38,6 +38,11 @@ public class SolicitudAbastecimientoController {
         ));
     }
 
+    @PostMapping("/{id}/notificar")
+    public ResponseEntity<SolicitudAbastecimiento> notificar(@PathVariable Long id) {
+        return ResponseEntity.ok(service.notificarConfirmada(id));
+    }
+
     public record ConfirmarSolicitudRequest(
             @NotBlank(message = "El punto de abastecimiento es obligatorio") String puntoAbastecimiento,
             @NotNull(message = "La cantidad de galones es obligatoria")
