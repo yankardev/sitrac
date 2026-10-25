@@ -148,7 +148,7 @@
             <span class="secondary">{{ detalleNotificacion(solicitud) }}</span>
             <button
               *ngIf="!notificacionDeSolicitud(solicitud)"
-              class="inline-action"
+              class="secondary-button"
               type="button"
               [disabled]="notificandoId !== null"
               (click)="generarNotificacion(solicitud)">
@@ -191,10 +191,12 @@
       </div>
     </div>
 
-    <div class="info-card full">
-      <span>¿Qué ocurrirá al confirmar?</span>
-      <strong>Se publicará el evento ABASTECIMIENTO_CONFIRMADO mediante RabbitMQ.</strong>
-      <p>notification-service generará la comunicación para informar al conductor el punto y la cantidad autorizada.</p>
+    <div class="assignment-card full">
+      <div>
+        <span>Al confirmar</span>
+        <strong>RabbitMQ publicará ABASTECIMIENTO_CONFIRMADO.</strong>
+        <span class="secondary">notification-service generará la comunicación con el punto y los galones autorizados para el conductor.</span>
+      </div>
     </div>
 
     <form #confirmacionForm="ngForm" (ngSubmit)="confirmarSolicitud()">
