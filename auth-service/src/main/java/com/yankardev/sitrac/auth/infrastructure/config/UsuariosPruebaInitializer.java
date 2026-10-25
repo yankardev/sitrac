@@ -11,15 +11,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class UsuariosPruebaInitializer implements ApplicationRunner {
 
+    private static final String PASSWORD_DEMO = "Sitrac2026*";
+
     private final RegistrarUsuarioUseCase registrarUsuarioUseCase;
 
     @Override
     public void run(ApplicationArguments args) {
-        crearSiNoExiste("admin.sitrac", "Admin123*", "Administrador SITRAC", Rol.ADMIN);
-        crearSiNoExiste("operador.sitrac", "Operador123*", "Operador de Transporte", Rol.OPERADOR);
-        crearSiNoExiste("somma.sitrac", "Somma123*", "Responsable SOMMA", Rol.SOMMA);
-        crearSiNoExiste("mantenimiento.sitrac", "Mantenimiento123*", "Responsable de Mantenimiento", Rol.MANTENIMIENTO);
-        crearSiNoExiste("supervisor.sitrac", "Supervisor123*", "Supervisor de Operaciones", Rol.SUPERVISOR);
+        crearSiNoExiste("admin.sitrac", PASSWORD_DEMO, "Administrador SITRAC", Rol.ADMIN);
+        crearSiNoExiste("operador.sitrac", PASSWORD_DEMO, "Operador de Transporte", Rol.OPERADOR);
+        crearSiNoExiste("combustible.sitrac", PASSWORD_DEMO, "Responsable de Combustible", Rol.COMBUSTIBLE);
+        crearSiNoExiste("supervisor.sitrac", PASSWORD_DEMO, "Supervisor de Operaciones", Rol.SUPERVISOR);
     }
 
     private void crearSiNoExiste(
