@@ -1,174 +1,271 @@
 # SITRAC — Sistema Integral de Transporte de Carga
 
-SITRAC es una aplicación orientada a digitalizar la preparación, programación, ejecución y control de operaciones de transporte de carga pesada.
+SITRAC es una aplicación web para apoyar la gestión de servicios de transporte de carga pesada, desde el registro del pedido hasta la finalización del viaje. La solución reduce verificaciones repetitivas, controla la asignación de recursos, coordina el abastecimiento de combustible y automatiza comunicaciones al conductor y al cliente.
 
-El proyecto se desarrolla para el curso **Desarrollo de Servicios Web II** utilizando una arquitectura distribuida basada en **microservicios REST**, con **Java 21, Spring Boot, Spring MVC, Spring Data JPA, MySQL, Maven, Lombok y Postman**.
+## Arquitectura
 
-Cada microservicio mantiene una organización interna inspirada en **arquitectura hexagonal**, separando dominio, casos de uso, entrada REST y persistencia.
+La solución utiliza:
 
-> Estado actual: están implementados diez microservicios. El flujo principal ya integra pedidos, conductores, flota, programación, SOMMA, viajes, mantenimiento y combustible.
+- **Angular** para la interfaz web.
+- **Java 21 + Spring Boot** para los microservicios.
+- **API Gateway** como punto de entrada.
+- **Eureka Server** para registro y descubrimiento.
+- **OpenFeign** para consultas síncronas en la programación.
+- **RabbitMQ** para eventos asíncronos.
+- **Spring Data JPA + MySQL** para persistencia.
+- **Spring Security + BCrypt** para autenticación y protección de contraseñas.
+- **Docker Compose** para ejecutar el entorno integrado.
 
-## Microservicios
+## Microservicios funcionales
 
-| Microservicio | Puerto | Base de datos |
+| Microservicio | Puerto | Responsabilidad |
 |---|---:|---|
-| auth-service | 8081 | sitrac_auth |
-| cliente-service | 8082 | sitrac_clientes |
-| pedido-service | 8083 | sitrac_pedidos |
-| conductor-service | 8084 | sitrac_conductores |
-| flota-service | 8085 | sitrac_flota |
-| programacion-service | 8086 | sitrac_programaciones |
-| viaje-service | 8087 | sitrac_viajes |
-| mantenimiento-service | 8088 | sitrac_mantenimiento |
-| somma-service | 8089 | sitrac_somma |
-| combustible-service | 8090 | sitrac_combustible |
+| auth-service | 8081 | Usuarios, roles e inicio de sesión |
+| cliente-service | 8082 | Clientes |
+| pedido-service | 8083 | Solicitudes de transporte |
+| conductor-service | 8084 | Conductores, licencias y disponibilidad |
+| flota-service | 8085 | Tractos y semirremolques |
+| programacion-service | 8086 | Validación y asignación de recursos |
+| viaje-service | 8087 | Ejecución y cierre del viaje |
+| combustible-service | 8090 | Solicitudes y registros de abastecimiento |
+| notification-service | 8091 | Correos y constancia final |
 
-## Flujo operativo actual
+Componentes de infraestructura:
 
-```text
-Cliente
-  ↓
-Pedido REGISTRADO
-  ↓
-Programación
-  ↓
-Validación de conductor + tracto + semirremolque
-  ↓
-Pedido PROGRAMADO + recursos ASIGNADOS
-  ↓
-Charla SOMMA CERRADA
-  ↓
-Viaje PROGRAMADO
-  ↓
-Inicio del viaje
-  ↓
-Pedido EN_VIAJE
-  ↓
-Combustible / controles operativos
-  ↓
-Finalización del viaje
-  ↓
-Pedido FINALIZADO + programación FINALIZADA
-  ↓
-Conductor y unidades nuevamente DISPONIBLES
-```
+| Componente | Puerto |
+|---|---:|
+| API Gateway | 8080 |
+| Eureka Server | 8761 |
+| RabbitMQ | 5672 |
+| RabbitMQ Management | 15672 |
+| MySQL | 3307 host / 3306 contenedor |
+| Angular | 4200 |
 
-La cancelación también sincroniza el estado de la programación y libera los recursos. Si el viaje aún no había iniciado, el pedido vuelve a `REGISTRADO`; si ya estaba en ejecución, pasa a `CANCELADO`.
-
-## Integración de programacion-service
-
-Antes de crear una programación, el servicio consulta por REST a `pedido-service`, `conductor-service` y `flota-service`.
-
-Valida:
-
-- existencia y estado del pedido;
-- conductor activo y disponible;
-- licencia vigente;
-- tracto y semirremolque disponibles;
-- capacidad suficiente para la carga;
-- compatibilidad entre tipo de carga y semirremolque;
-- ausencia de otra programación activa para el pedido o los recursos asignados.
-
-Al crear la programación:
-
-- el pedido pasa a `PROGRAMADO`;
-- el conductor deja de estar disponible;
-- tracto y semirremolque pasan a `ASIGNADO`.
-
-Al finalizar el viaje, `programacion-service` finaliza el pedido, marca la programación como `FINALIZADA` y libera conductor, tracto y semirremolque.
-
-## Integración de viaje-service
-
-Antes de crear un viaje, `viaje-service` consulta por REST a `programacion-service` (:8086).
-
-Valida que:
-
-- la programación exista;
-- esté en estado `PROGRAMADA`;
-- no tenga otro viaje asociado.
-
-El ciclo de vida del viaje es:
+## Flujo operativo principal
 
 ```text
-PROGRAMADO → EN_VIAJE → FINALIZADO
-        └──────────────→ CANCELADO
+Cliente / Pedido
+      ↓
+Operaciones programa el servicio
+      ↓
+programacion-service
+      ├─ valida pedido
+      ├─ valida conductor y licencia
+      └─ valida tracto, semirremolque y capacidad
+      ↓
+PROGRAMACION_CREADA
+      ↓ RabbitMQ
+combustible-service
+      ↓
+Solicitud de abastecimiento PENDIENTE
+      ↓
+Personal de Combustible confirma punto y galones
+      ↓
+ABASTECIMIENTO_CONFIRMADO
+      ↓ RabbitMQ
+notification-service
+      ↓
+Correo al conductor
+      ↓
+Viaje PROGRAMADO → EN_VIAJE → FINALIZADO
+      ↓ RabbitMQ
+notification-service
+      ↓
+Correo + constancia PDF al cliente
 ```
 
-Para pasar a `EN_VIAJE` se exige una charla SOMMA cerrada para la programación. Los cambios de estado del viaje se sincronizan con `programacion-service`, que a su vez actualiza el pedido y los recursos.
+## Programación y validaciones
 
-Para no romper la trazabilidad operativa, un viaje solo puede eliminarse después de haber sido cancelado correctamente.
+`programacion-service` consulta mediante OpenFeign a:
 
-## Integración de somma-service
+- `pedido-service`: estado del pedido, carga y tonelaje;
+- `conductor-service`: estado, disponibilidad y vigencia de licencia;
+- `flota-service`: disponibilidad, capacidad y tipo de unidad.
 
-Para registros de tipo `CHARLA`, `somma-service` consulta por REST a `programacion-service` (:8086).
+Antes de confirmar una programación se valida que:
 
-Valida:
+- el pedido pueda ser atendido;
+- el conductor esté activo, disponible y con licencia vigente;
+- tracto y semirremolque estén disponibles;
+- la capacidad sea suficiente;
+- el semirremolque sea compatible con la carga;
+- conductor y unidades no estén en otra programación activa.
 
-- que la charla tenga una programación asociada;
-- que exista la programación;
-- que esté en estado `PROGRAMADA`;
-- que se indique un conductor;
-- que el conductor corresponda al asignado en la programación.
+Compatibilidades principales:
 
-La columna `programacion_id` mantiene la trazabilidad entre seguridad y operación.
+| Tipo de carga | Semirremolque |
+|---|---|
+| Cal a granel | Bombona |
+| Cemento en bolsa | Plataforma |
+| Maquinaria | Cama baja |
+| Carga ancha | Cama baja |
+| Carga especial | Cama baja |
 
-## Integración de mantenimiento-service
+## Combustible y RabbitMQ
 
-`mantenimiento-service` consulta a `flota-service` antes de trabajar con una unidad.
+Al crear una programación, `programacion-service` publica el evento:
 
-Cuando un mantenimiento pasa a `EN_PROCESO`, la unidad pasa a `MANTENIMIENTO`. Al finalizar o cancelar el mantenimiento, la unidad vuelve a `DISPONIBLE`.
+```text
+programacion.creada / PROGRAMACION_CREADA
+```
 
-Para proteger el flujo operativo, una unidad que ya se encuentra asignada no puede ser tomada para iniciar un mantenimiento, y no se permite cambiar de unidad mientras el mantenimiento está en proceso.
-
-## Integración de combustible-service
-
-`combustible-service` valida por REST la programación asociada antes de registrar un abastecimiento.
-
-Comprueba:
-
-- que la programación exista;
-- que esté `PROGRAMADA`;
-- que el conductor corresponda a la programación;
-- que el tracto corresponda a la programación.
+`combustible-service` lo consume desde la cola `sitrac.combustible` y crea una solicitud en estado `PENDIENTE` reutilizando la programación, conductor y tracto.
 
 Endpoints principales:
 
 ```http
-POST   /api/combustible/abastecimientos
-GET    /api/combustible/abastecimientos
-GET    /api/combustible/abastecimientos/{id}
-PUT    /api/combustible/abastecimientos/{id}
-DELETE /api/combustible/abastecimientos/{id}
+GET /api/combustible/solicitudes
+PUT /api/combustible/solicitudes/{id}/confirmar
 ```
 
-## Protección de integridad operativa
+Al confirmar la solicitud se publica:
 
-Para evitar dejar referencias rotas entre microservicios:
-
-- no se puede eliminar un pedido que ya está dentro de una operación activa o finalizada;
-- no se puede eliminar un conductor mientras esté asignado;
-- no se puede eliminar un tracto o semirremolque mientras esté asignado o en mantenimiento;
-- no se puede eliminar directamente un viaje activo: primero debe cancelarse para que SITRAC libere correctamente los recursos.
-
-## Ejecución local
-
-Cada microservicio utiliza su propio puerto y su propia base MySQL. Las URL entre servicios se pueden sobrescribir mediante variables de entorno y, en desarrollo local, apuntan a `localhost`.
-
-Ejemplo de ejecución desde la raíz:
-
-```powershell
-mvnw.cmd -pl auth-service spring-boot:run
-mvnw.cmd -pl cliente-service spring-boot:run
-mvnw.cmd -pl pedido-service spring-boot:run
-mvnw.cmd -pl conductor-service spring-boot:run
-mvnw.cmd -pl flota-service spring-boot:run
-mvnw.cmd -pl programacion-service spring-boot:run
-mvnw.cmd -pl viaje-service spring-boot:run
-mvnw.cmd -pl mantenimiento-service spring-boot:run
-mvnw.cmd -pl somma-service spring-boot:run
-mvnw.cmd -pl combustible-service spring-boot:run
+```text
+combustible.abastecimiento.confirmado / ABASTECIMIENTO_CONFIRMADO
 ```
 
-**SITRAC — Sistema Integral de Transporte de Carga**  
-Desarrollo de Servicios Web II  
-YANKARDEV
+`notification-service` consume el evento y envía al conductor el punto de abastecimiento, cantidad autorizada y datos relacionados con la operación.
+
+## Cierre del viaje y constancia
+
+Los estados principales del viaje son:
+
+```text
+PROGRAMADO → EN_VIAJE → FINALIZADO
+       └──────────────→ CANCELADO
+```
+
+Al finalizar:
+
+1. `viaje-service` actualiza la operación mediante `programacion-service`.
+2. Pedido y programación quedan finalizados.
+3. Conductor, tracto y semirremolque vuelven a estar disponibles.
+4. Se publica `VIAJE_FINALIZADO` en RabbitMQ.
+5. `notification-service` obtiene la información del cliente.
+6. Se genera una constancia PDF del servicio.
+7. El cliente recibe el correo de finalización con el PDF adjunto.
+
+## Roles
+
+| Rol | Acceso principal |
+|---|---|
+| ADMIN | Gestión general y usuarios |
+| OPERADOR | Clientes, pedidos, conductores, flota, programación y viajes |
+| COMBUSTIBLE | Solicitudes y abastecimientos |
+| SUPERVISOR | Consulta y supervisión operativa |
+
+Conductores y clientes no necesitan ingresar a SITRAC; reciben las comunicaciones generadas por la operación.
+
+## Credenciales de demostración
+
+Al iniciar el sistema, `auth-service` crea estos usuarios si no existen:
+
+| Rol | Usuario | Contraseña |
+|---|---|---|
+| ADMIN | `admin.sitrac` | `Admin123*` |
+| OPERADOR | `operador.sitrac` | `Operador123*` |
+| COMBUSTIBLE | `combustible.sitrac` | `Combustible123*` |
+| SUPERVISOR | `supervisor.sitrac` | `Supervisor123*` |
+
+## Ejecución con Docker
+
+Requisito: Docker Desktop iniciado.
+
+```bash
+docker compose up -d --build
+```
+
+En Windows también se puede ejecutar:
+
+```text
+run-all.bat
+```
+
+Verificar contenedores:
+
+```bash
+docker compose ps
+```
+
+Accesos:
+
+- SITRAC: `http://localhost:4200`
+- API Gateway: `http://localhost:8080`
+- Eureka: `http://localhost:8761`
+- RabbitMQ: `http://localhost:15672`
+
+Credenciales RabbitMQ por defecto:
+
+```text
+usuario: sitrac
+password: sitracmq
+```
+
+Detener el entorno:
+
+```bash
+docker compose down
+```
+
+Si se desea reconstruir también la base demo desde cero:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+## Correo real o modo demostración
+
+Por defecto `notification-service` trabaja con:
+
+```text
+SITRAC_MAIL_ENABLED=false
+```
+
+En ese modo las notificaciones se registran en los logs sin requerir credenciales SMTP.
+
+Para envío real se pueden definir:
+
+```text
+SITRAC_MAIL_ENABLED=true
+MAIL_USERNAME=correo@dominio.com
+MAIL_PASSWORD=clave-de-aplicacion
+MAIL_FROM=correo@dominio.com
+```
+
+No se deben almacenar contraseñas reales en el repositorio.
+
+## Validación automática
+
+GitHub Actions ejecuta en cada cambio de la rama final:
+
+- compilación Maven con Java 21;
+- validación de `docker compose config`;
+- `npm ci`;
+- compilación de Angular.
+
+El flujo se encuentra en `.github/workflows/ci-spring-cloud.yml`.
+
+## Estructura relevante
+
+```text
+sitrac/
+├── api-gateway/
+├── eureka-server/
+├── auth-service/
+├── cliente-service/
+├── pedido-service/
+├── conductor-service/
+├── flota-service/
+├── programacion-service/
+├── viaje-service/
+├── combustible-service/
+├── notification-service/
+├── sitrac-frontend/
+├── database/
+├── docs/
+├── docker-compose.yml
+└── Dockerfile
+```
+
+**SITRAC — Sistema Integral de Transporte de Carga**
