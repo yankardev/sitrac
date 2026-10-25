@@ -1,6 +1,7 @@
 name: SITRAC Spring Cloud CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - feature/spring-cloud-rabbitmq
