@@ -2,7 +2,7 @@
   <div>
     <span class="breadcrumb">Operaciones / Combustible</span>
     <h1>Coordinación de abastecimiento</h1>
-    <p>Atiende las solicitudes generadas automáticamente al programar un servicio.</p>
+    <p>Atiende la solicitud creada desde la programación y confirma dónde y cuánto combustible recibirá el conductor.</p>
   </div>
 
   <button class="secondary-button" type="button" (click)="cargarDatos()" [disabled]="cargando">
@@ -22,34 +22,34 @@
 
 <section class="summary-grid">
   <article class="summary-card">
-    <div class="summary-icon orange">!</div>
+    <div class="summary-icon orange">1</div>
     <div>
-      <span>Solicitudes pendientes</span>
+      <span>Pendientes por atender</span>
       <strong>{{ solicitudesPendientes.length }}</strong>
     </div>
   </article>
 
   <article class="summary-card">
-    <div class="summary-icon green">✓</div>
+    <div class="summary-icon green">2</div>
     <div>
-      <span>Solicitudes confirmadas</span>
+      <span>Abastecimientos confirmados</span>
       <strong>{{ solicitudesConfirmadas.length }}</strong>
     </div>
   </article>
 
   <article class="summary-card">
-    <div class="summary-icon blue">◉</div>
+    <div class="summary-icon blue">✉</div>
     <div>
-      <span>Galones autorizados</span>
-      <strong>{{ totalGalonesConfirmados | number:'1.0-2' }}</strong>
+      <span>Notificaciones al conductor</span>
+      <strong>{{ totalNotificacionesConductor }}</strong>
     </div>
   </article>
 
   <article class="summary-card">
-    <div class="summary-icon purple">◆</div>
+    <div class="summary-icon purple">◉</div>
     <div>
-      <span>Registros históricos</span>
-      <strong>{{ abastecimientos.length }}</strong>
+      <span>Galones autorizados</span>
+      <strong>{{ totalGalonesConfirmados | number:'1.0-2' }}</strong>
     </div>
   </article>
 </section>
@@ -57,8 +57,8 @@
 <section class="panel">
   <div class="panel-toolbar">
     <div>
-      <h2>Solicitudes pendientes</h2>
-      <p>Se generan automáticamente cuando Operaciones confirma una programación.</p>
+      <h2>1. Solicitudes pendientes</h2>
+      <p>Se crean automáticamente cuando Operaciones confirma una programación. El conductor, tracto y programación ya vienen relacionados.</p>
     </div>
   </div>
 
@@ -93,7 +93,7 @@
           <td><span class="type-badge third-party">Pendiente</span></td>
           <td class="actions-column">
             <button class="primary-button" type="button" (click)="abrirConfirmacion(solicitud)">
-              Atender
+              Atender solicitud
             </button>
           </td>
         </tr>
@@ -104,15 +104,15 @@
   <div class="empty-state" *ngIf="!cargando && solicitudesPendientes.length === 0">
     <div class="empty-icon">✓</div>
     <h3>No hay solicitudes pendientes</h3>
-    <p>Las nuevas programaciones aparecerán aquí automáticamente.</p>
+    <p>Cuando Operaciones programe un nuevo viaje, la solicitud de combustible aparecerá aquí automáticamente.</p>
   </div>
 </section>
 
 <section class="panel panel-secondary">
   <div class="panel-toolbar">
     <div>
-      <h2>Solicitudes confirmadas</h2>
-      <p>Abastecimientos atendidos y notificados al conductor.</p>
+      <h2>2. Abastecimientos confirmados y comunicación al conductor</h2>
+      <p>Al confirmar punto y galones, RabbitMQ publica el evento y notification-service genera la comunicación al conductor.</p>
     </div>
   </div>
 
@@ -122,10 +122,10 @@
         <tr>
           <th>Solicitud</th>
           <th>Programación</th>
-          <th>Unidad / conductor</th>
-          <th>Punto</th>
-          <th>Galones</th>
+          <th>Conductor / unidad</th>
+          <th>Abastecimiento autorizado</th>
           <th>Confirmación</th>
+          <th>Notificación al conductor</th>
         </tr>
       </thead>
       <tbody>
@@ -133,60 +133,27 @@
           <td><strong class="record-code">#SOL-{{ codigo(solicitud.id) }}</strong></td>
           <td>{{ codigoProgramacion(solicitud.programacionId) }}</td>
           <td>
-            <strong class="unit-name">{{ tractoPlaca(solicitud.tractoId) }}</strong>
-            <span class="secondary">{{ conductorNombre(solicitud.conductorId) }}</span>
+            <strong>{{ conductorNombre(solicitud.conductorId) }}</strong>
+            <span class="secondary">Tracto {{ tractoPlaca(solicitud.tractoId) }}</span>
           </td>
-          <td>{{ solicitud.puntoAbastecimiento }}</td>
-          <td><strong>{{ solicitud.cantidadGalones | number:'1.0-2' }} gal</strong></td>
+          <td>
+            <strong>{{ solicitud.puntoAbastecimiento }}</strong>
+            <span class="secondary">{{ solicitud.cantidadGalones | number:'1.0-2' }} galones</span>
+          </td>
           <td>{{ solicitud.fechaConfirmacion | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td>
+            <span class="type-badge" [ngClass]="claseNotificacion(solicitud)">
+              {{ etiquetaNotificacion(solicitud) }}
+            </span>
+            <span class="secondary">{{ detalleNotificacion(solicitud) }}</span>
+          </td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <div class="empty-state compact" *ngIf="solicitudesConfirmadas.length === 0">
-    <p>Aún no se han confirmado solicitudes.</p>
-  </div>
-</section>
-
-<section class="panel panel-secondary">
-  <div class="panel-toolbar">
-    <div>
-      <h2>Historial de abastecimientos</h2>
-      <p>Registros operativos de combustible vinculados a programaciones anteriores.</p>
-    </div>
-  </div>
-
-  <div class="table-wrapper" *ngIf="abastecimientos.length > 0">
-    <table>
-      <thead>
-        <tr>
-          <th>Registro</th>
-          <th>Programación</th>
-          <th>Unidad / conductor</th>
-          <th>Tipo</th>
-          <th>Galones</th>
-          <th>Fecha</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let item of abastecimientos">
-          <td><strong class="record-code">#AB-{{ codigo(item.id) }}</strong></td>
-          <td>{{ codigoProgramacion(item.programacionId) }}</td>
-          <td>
-            <strong class="unit-name">{{ tractoPlaca(item.tractoId) }}</strong>
-            <span class="secondary">{{ conductorNombre(item.conductorId) }}</span>
-          </td>
-          <td>
-            <span class="type-badge" [class.internal]="item.tipoAbastecimiento === 'INTERNO'" [class.third-party]="item.tipoAbastecimiento === 'TERCERO'">
-              {{ item.tipoAbastecimiento === 'INTERNO' ? 'Interno' : 'Tercero' }}
-            </span>
-          </td>
-          <td>{{ item.cantidadGalones | number:'1.0-2' }} gal</td>
-          <td>{{ item.fechaHora | date:'dd/MM/yyyy HH:mm' }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <p>Aún no se han confirmado solicitudes de abastecimiento.</p>
   </div>
 </section>
 
@@ -194,9 +161,9 @@
   <section class="form-drawer" (click)="$event.stopPropagation()">
     <div class="drawer-header">
       <div>
-        <span>CONFIRMAR ABASTECIMIENTO</span>
+        <span>ATENDER SOLICITUD DE ABASTECIMIENTO</span>
         <h2>Solicitud #SOL-{{ codigo(solicitudSeleccionada.id) }}</h2>
-        <p>Los datos del conductor, tracto y programación ya fueron heredados automáticamente.</p>
+        <p>Los datos del conductor, tracto y programación se reutilizan automáticamente; solo completa el abastecimiento.</p>
       </div>
       <button class="close-button" type="button" (click)="cerrarConfirmacion()">×</button>
     </div>
@@ -214,6 +181,12 @@
         <span>Tracto</span>
         <strong>{{ tractoPlaca(solicitudSeleccionada.tractoId) }}</strong>
       </div>
+    </div>
+
+    <div class="info-card full">
+      <span>¿Qué ocurrirá al confirmar?</span>
+      <strong>Se publicará el evento ABASTECIMIENTO_CONFIRMADO mediante RabbitMQ.</strong>
+      <p>notification-service generará la comunicación para informar al conductor el punto y la cantidad autorizada.</p>
     </div>
 
     <form #confirmacionForm="ngForm" (ngSubmit)="confirmarSolicitud()">
@@ -239,7 +212,7 @@
         </label>
 
         <label class="field full">
-          <span>Observación</span>
+          <span>Observación para la operación</span>
           <textarea
             name="observacion"
             rows="3"
@@ -254,7 +227,7 @@
           Cancelar
         </button>
         <button class="primary-button" type="submit" [disabled]="confirmacionForm.invalid || confirmando">
-          {{ confirmando ? 'Confirmando...' : 'Confirmar y notificar' }}
+          {{ confirmando ? 'Confirmando...' : 'Confirmar y generar notificación' }}
         </button>
       </div>
     </form>
