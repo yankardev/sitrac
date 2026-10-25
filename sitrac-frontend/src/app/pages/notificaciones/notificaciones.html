@@ -1,0 +1,117 @@
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Sistema / Notificaciones</span>
+    <h1>Notificaciones</h1>
+    <p>Evidencia de los eventos procesados por notification-service.</p>
+  </div>
+
+  <button class="refresh-button" type="button" (click)="cargar()" [disabled]="cargando">
+    ↻ Actualizar
+  </button>
+</header>
+
+<div class="info-banner">
+  <strong>¿Qué significa el estado?</strong>
+  <span><b>Enviada</b>: el correo salió por SMTP. <b>Simulada</b>: el evento y el contenido se generaron correctamente, pero el correo está desactivado en el entorno de demostración.</span>
+</div>
+
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon blue">🔔</div>
+    <div>
+      <span>Total registradas</span>
+      <strong>{{ registros.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Enviadas</span>
+      <strong>{{ totalEnviadas }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon orange">◉</div>
+    <div>
+      <span>Simuladas</span>
+      <strong>{{ totalSimuladas }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon red">!</div>
+    <div>
+      <span>Omitidas / error</span>
+      <strong>{{ totalErrores }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <h2>Registro de evidencias</h2>
+      <p>Eventos de abastecimiento y cierre de viaje procesados de forma asíncrona.</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando notificaciones...</span>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && registros.length === 0">
+    <div class="empty-icon">🔔</div>
+    <h3>Aún no hay notificaciones registradas</h3>
+    <p>Confirma un abastecimiento o finaliza un viaje para generar la primera evidencia.</p>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && registros.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Evento</th>
+          <th>Referencia</th>
+          <th>Destinatario</th>
+          <th>Evidencia</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let registro of registros">
+          <td>
+            <strong>{{ registro.fechaRegistro | date:'dd/MM/yyyy HH:mm' }}</strong>
+          </td>
+          <td>
+            <strong>{{ etiquetaEvento(registro.tipoEvento) }}</strong>
+            <span class="secondary">{{ registro.asunto }}</span>
+          </td>
+          <td>
+            <strong>{{ registro.referencia || '—' }}</strong>
+          </td>
+          <td>
+            <span>{{ registro.destinatario || 'Sin correo registrado' }}</span>
+          </td>
+          <td>
+            <span>{{ registro.detalle }}</span>
+            <span class="attachment" *ngIf="registro.tieneAdjunto">PDF adjunto generado</span>
+          </td>
+          <td>
+            <span class="status" [ngClass]="claseEstado(registro.estado)">
+              <i></i>
+              {{ etiquetaEstado(registro.estado) }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
