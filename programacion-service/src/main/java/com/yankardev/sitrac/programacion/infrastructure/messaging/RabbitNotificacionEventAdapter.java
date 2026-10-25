@@ -7,7 +7,7 @@ import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -24,7 +24,7 @@ public class RabbitNotificacionEventAdapter implements NotificacionEventPort {
     }
 
     @Override
-    public void programacionCreada(Long programacionId, Long pedidoId, LocalDate fechaProgramada) {
+    public void programacionCreada(Long programacionId, Long pedidoId, LocalDateTime fechaProgramada) {
         Map<String, Object> evento = new LinkedHashMap<>();
         evento.put("tipoEvento", "PROGRAMACION_CREADA");
         evento.put("programacionId", programacionId);
