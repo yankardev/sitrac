@@ -32,6 +32,10 @@ export class CombustibleService {
     return this.http.put<SolicitudAbastecimiento>(`${this.solicitudesUrl}/${id}/confirmar`, payload);
   }
 
+  generarNotificacion(id: number): Observable<SolicitudAbastecimiento> {
+    return this.http.post<SolicitudAbastecimiento>(`${this.solicitudesUrl}/${id}/notificar`, {});
+  }
+
   crear(abastecimiento: AbastecimientoForm): Observable<AbastecimientoCombustible> {
     return this.http.post<AbastecimientoCombustible>(this.apiUrl, abastecimiento);
   }
