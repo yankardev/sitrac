@@ -13,6 +13,7 @@ import { Flota } from './pages/flota/flota';
 import { Programacion } from './pages/programacion/programacion';
 import { Viajes } from './pages/viajes/viajes';
 import { Combustible } from './pages/combustible/combustible';
+import { Notificaciones } from './pages/notificaciones/notificaciones';
 import { Seguridad } from './pages/seguridad/seguridad';
 
 const TODOS = ['ADMIN', 'OPERADOR', 'COMBUSTIBLE', 'SUPERVISOR'];
@@ -38,6 +39,12 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         component: Dashboard,
+        canActivate: [roleGuard],
+        data: { roles: TODOS }
+      },
+      {
+        path: 'notificaciones',
+        component: Notificaciones,
         canActivate: [roleGuard],
         data: { roles: TODOS }
       },
