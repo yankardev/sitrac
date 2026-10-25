@@ -2,65 +2,53 @@
 setlocal
 set "ROOT=%~dp0"
 
+cd /d "%ROOT%"
+
 echo =============================================
-echo      SITRAC - INICIO COMPLETO DEL SISTEMA
+echo      SITRAC - INICIO INTEGRADO CON DOCKER
 echo =============================================
 echo.
 
-echo Verificando Java...
-where java >nul 2>&1
+where docker >nul 2>&1
 if errorlevel 1 (
-  echo [ERROR] Java no esta instalado o no esta en PATH.
+  echo [ERROR] Docker no esta instalado o no esta disponible en PATH.
+  echo Instala o inicia Docker Desktop y vuelve a ejecutar este archivo.
   pause
   exit /b 1
 )
 
-echo Verificando Node.js...
-where node >nul 2>&1
+docker info >nul 2>&1
 if errorlevel 1 (
-  echo [ERROR] Node.js no esta instalado o no esta en PATH.
+  echo [ERROR] Docker Desktop no esta iniciado.
   pause
   exit /b 1
 )
 
-echo Verificando npm...
-where npm >nul 2>&1
+echo Construyendo e iniciando SITRAC...
+docker compose up -d --build
 if errorlevel 1 (
-  echo [ERROR] npm no esta instalado o no esta en PATH.
+  echo.
+  echo [ERROR] No se pudo iniciar SITRAC. Revisa: docker compose logs
   pause
   exit /b 1
 )
 
 echo.
-echo Configuracion de MySQL para esta maquina.
-set "MYSQL_USER=root"
-set /p MYSQL_USER_INPUT=Usuario MySQL [root]: 
-if not "%MYSQL_USER_INPUT%"=="" set "MYSQL_USER=%MYSQL_USER_INPUT%"
-set /p MYSQL_PASSWORD=Contrasena MySQL [Enter si no tiene]: 
-
+echo =============================================
+echo SITRAC iniciado correctamente
+echo =============================================
+echo Frontend:          http://localhost:4200
+echo API Gateway:       http://localhost:8080
+echo Eureka:            http://localhost:8761
+echo RabbitMQ:          http://localhost:15672
+echo MySQL:             localhost:3307
 echo.
-echo IMPORTANTE: MySQL debe estar iniciado en localhost:3306.
-echo Se abriran ventanas separadas para cada microservicio y el frontend.
+echo Credenciales demo:
+echo   admin.sitrac / Admin123*
+echo   operador.sitrac / Operador123*
+echo   combustible.sitrac / Combustible123*
+echo   supervisor.sitrac / Supervisor123*
 echo.
-
-start "SITRAC auth-service 8081" /D "%ROOT%" cmd /k "call mvnw.cmd -pl auth-service spring-boot:run"
-start "SITRAC cliente-service 8082" /D "%ROOT%" cmd /k "call mvnw.cmd -pl cliente-service spring-boot:run"
-start "SITRAC pedido-service 8083" /D "%ROOT%" cmd /k "call mvnw.cmd -pl pedido-service spring-boot:run"
-start "SITRAC conductor-service 8084" /D "%ROOT%" cmd /k "call mvnw.cmd -pl conductor-service spring-boot:run"
-start "SITRAC flota-service 8085" /D "%ROOT%" cmd /k "call mvnw.cmd -pl flota-service spring-boot:run"
-start "SITRAC programacion-service 8086" /D "%ROOT%" cmd /k "call mvnw.cmd -pl programacion-service spring-boot:run"
-start "SITRAC viaje-service 8087" /D "%ROOT%" cmd /k "call mvnw.cmd -pl viaje-service spring-boot:run"
-start "SITRAC mantenimiento-service 8088" /D "%ROOT%" cmd /k "call mvnw.cmd -pl mantenimiento-service spring-boot:run"
-start "SITRAC somma-service 8089" /D "%ROOT%" cmd /k "call mvnw.cmd -pl somma-service spring-boot:run"
-start "SITRAC combustible-service 8090" /D "%ROOT%" cmd /k "call mvnw.cmd -pl combustible-service spring-boot:run"
-
-start "SITRAC Angular 4200" /D "%ROOT%sitrac-frontend" cmd /k "if not exist node_modules call npm install & call npm start"
-
-echo.
-echo Procesos lanzados.
-echo Backend: 8081 al 8090
-echo Frontend: http://localhost:4200
-echo Usuario MySQL: %MYSQL_USER%
-echo.
-echo La primera ejecucion puede demorar mientras Maven y npm descargan dependencias.
+echo Para revisar contenedores: docker compose ps
+echo Para detener SITRAC:      docker compose down
 pause
