@@ -45,6 +45,9 @@ public class ConductorJpaEntity {
     @Column(length = 30)
     private String telefono;
 
+    @Column(length = 120)
+    private String email;
+
     @Column(nullable = false)
     private boolean disponible;
 
