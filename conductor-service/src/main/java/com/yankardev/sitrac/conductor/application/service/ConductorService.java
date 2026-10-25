@@ -38,6 +38,7 @@ public class ConductorService implements ConductorUseCase {
                 .categoriaLicencia(conductor.getCategoriaLicencia())
                 .fechaVencimientoLicencia(conductor.getFechaVencimientoLicencia())
                 .telefono(conductor.getTelefono())
+                .email(conductor.getEmail())
                 .disponible(true)
                 .activo(true)
                 .build();
@@ -82,6 +83,7 @@ public class ConductorService implements ConductorUseCase {
                 .categoriaLicencia(conductor.getCategoriaLicencia())
                 .fechaVencimientoLicencia(conductor.getFechaVencimientoLicencia())
                 .telefono(conductor.getTelefono())
+                .email(conductor.getEmail())
                 .disponible(conductor.isDisponible())
                 .activo(conductor.isActivo())
                 .build();
@@ -102,6 +104,7 @@ public class ConductorService implements ConductorUseCase {
                 .categoriaLicencia(actual.getCategoriaLicencia())
                 .fechaVencimientoLicencia(actual.getFechaVencimientoLicencia())
                 .telefono(actual.getTelefono())
+                .email(actual.getEmail())
                 .disponible(disponible)
                 .activo(actual.isActivo())
                 .build();
