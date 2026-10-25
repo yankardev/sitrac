@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.FullyQualifiedAnnotationBeanNameGenerator;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @SpringBootApplication
@@ -19,12 +20,15 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
                 "com.yankardev.sitrac.viaje",
                 "com.yankardev.sitrac.combustible"
         },
+        nameGenerator = FullyQualifiedAnnotationBeanNameGenerator.class,
         excludeFilters = @ComponentScan.Filter(
                 type = FilterType.ASSIGNABLE_TYPE,
                 classes = {
                         ProgramacionServiceApplication.class,
                         ViajeServiceApplication.class,
-                        CombustibleServiceApplication.class
+                        CombustibleServiceApplication.class,
+                        com.yankardev.sitrac.programacion.infrastructure.messaging.RabbitEventConfig.class,
+                        com.yankardev.sitrac.viaje.infrastructure.messaging.RabbitEventConfig.class
                 }
         )
 )
