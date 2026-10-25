@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.LocalDate;
 
-@FeignClient(name = "conductor-service")
+@FeignClient(name = "recursos-service")
 public interface ConductorFeignClient {
 
     @GetMapping("/api/conductores/{id}")
