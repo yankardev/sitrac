@@ -80,6 +80,29 @@ public class SolicitudAbastecimientoService {
         return confirmada;
     }
 
+    /**
+     * Reenvía únicamente el evento de notificación de una solicitud que ya fue
+     * confirmada. Se utiliza como recuperación de evidencia para solicitudes
+     * históricas confirmadas antes de que notification-service estuviera disponible.
+     */
+    @Transactional(readOnly = true)
+    public SolicitudAbastecimiento notificarConfirmada(Long id) {
+        SolicitudAbastecimiento solicitud = repository.findById(id)
+                .orElseThrow(() -> new ReglaNegocioException("Solicitud de abastecimiento no encontrada: " + id));
+
+        if (solicitud.getEstado() != EstadoSolicitudAbastecimiento.CONFIRMADA) {
+            throw new ReglaNegocioException("Solo se puede notificar una solicitud confirmada");
+        }
+
+        if (solicitud.getPuntoAbastecimiento() == null || solicitud.getCantidadGalones() == null
+                || solicitud.getFechaConfirmacion() == null) {
+            throw new ReglaNegocioException("La solicitud confirmada no tiene datos completos de abastecimiento");
+        }
+
+        publicarConfirmacion(solicitud);
+        return solicitud;
+    }
+
     private SolicitudAbastecimiento crearNueva(Long programacionId) {
         ProgramacionConsultaPort.ProgramacionOperacion programacion = programacionConsulta.buscarProgramacion(programacionId)
                 .orElseThrow(() -> new ReglaNegocioException(
@@ -123,6 +146,7 @@ public class SolicitudAbastecimientoService {
         } catch (AmqpException ex) {
             log.warn("La solicitud {} fue confirmada, pero no se pudo publicar la notificación: {}",
                     solicitud.getId(), ex.getMessage());
+            throw new ReglaNegocioException("No se pudo publicar la notificación de abastecimiento");
         }
     }
 
