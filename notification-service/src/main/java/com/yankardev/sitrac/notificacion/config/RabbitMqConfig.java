@@ -27,12 +27,14 @@ public class RabbitMqConfig {
 
     @Bean
     Binding combustibleBinding(Queue notificacionesQueue, TopicExchange sitracExchange) {
-        return BindingBuilder.bind(notificacionesQueue).to(sitracExchange).with("combustible.*");
+        // "#" permite recibir combustible.abastecimiento.confirmado y futuros eventos
+        // del mismo flujo sin perder mensajes por la cantidad de segmentos de la routing key.
+        return BindingBuilder.bind(notificacionesQueue).to(sitracExchange).with("combustible.#");
     }
 
     @Bean
     Binding viajeBinding(Queue notificacionesQueue, TopicExchange sitracExchange) {
-        return BindingBuilder.bind(notificacionesQueue).to(sitracExchange).with("viaje.*");
+        return BindingBuilder.bind(notificacionesQueue).to(sitracExchange).with("viaje.#");
     }
 
     @Bean
