@@ -1,2 +1,0 @@
-package com.yankardev.sitrac.mantenimiento.domain.port.out;import com.yankardev.sitrac.mantenimiento.domain.model.Mantenimiento;import java.util.*;
-public interface MantenimientoRepositoryPort{Mantenimiento guardar(Mantenimiento m);List<Mantenimiento> listar();Optional<Mantenimiento> buscarPorId(Long id);void eliminarPorId(Long id);}

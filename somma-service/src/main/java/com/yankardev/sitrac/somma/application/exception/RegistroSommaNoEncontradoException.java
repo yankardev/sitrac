@@ -1,1 +1,0 @@
-package com.yankardev.sitrac.somma.application.exception;public class RegistroSommaNoEncontradoException extends RuntimeException{public RegistroSommaNoEncontradoException(Long id){super("Registro SOMMA no encontrado con id: "+id);}}
