@@ -1,0 +1,23 @@
+# Credenciales de desarrollo para RabbitMQ.
+# Docker Compose carga este archivo automáticamente junto con docker-compose.yml.
+# Se pueden reemplazar definiendo RABBITMQ_USER y RABBITMQ_PASSWORD en el entorno.
+services:
+  rabbitmq:
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-sitrac}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-sitracmq}
+
+  programacion-service:
+    environment:
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sitrac}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
+
+  viaje-service:
+    environment:
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sitrac}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
+
+  notification-service:
+    environment:
+      RABBITMQ_USER: ${RABBITMQ_USER:-sitrac}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
