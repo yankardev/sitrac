@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 
 import {
   AbastecimientoCombustible,
-  AbastecimientoForm
+  AbastecimientoForm,
+  ConfirmarSolicitudAbastecimiento,
+  SolicitudAbastecimiento
 } from '../models/combustible.model';
 
 @Injectable({
@@ -13,9 +15,21 @@ import {
 export class CombustibleService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/combustible/abastecimientos';
+  private readonly solicitudesUrl = '/api/combustible/solicitudes';
 
   listar(): Observable<AbastecimientoCombustible[]> {
     return this.http.get<AbastecimientoCombustible[]>(this.apiUrl);
+  }
+
+  listarSolicitudes(): Observable<SolicitudAbastecimiento[]> {
+    return this.http.get<SolicitudAbastecimiento[]>(this.solicitudesUrl);
+  }
+
+  confirmarSolicitud(
+    id: number,
+    payload: ConfirmarSolicitudAbastecimiento
+  ): Observable<SolicitudAbastecimiento> {
+    return this.http.put<SolicitudAbastecimiento>(`${this.solicitudesUrl}/${id}/confirmar`, payload);
   }
 
   crear(abastecimiento: AbastecimientoForm): Observable<AbastecimientoCombustible> {
