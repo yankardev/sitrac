@@ -68,6 +68,7 @@ public class ConductorPersistenceAdapter implements ConductorRepositoryPort {
                 .categoriaLicencia(conductor.getCategoriaLicencia())
                 .fechaVencimientoLicencia(conductor.getFechaVencimientoLicencia())
                 .telefono(conductor.getTelefono())
+                .email(conductor.getEmail())
                 .disponible(conductor.isDisponible())
                 .activo(conductor.isActivo())
                 .build();
@@ -83,6 +84,7 @@ public class ConductorPersistenceAdapter implements ConductorRepositoryPort {
                 .categoriaLicencia(entity.getCategoriaLicencia())
                 .fechaVencimientoLicencia(entity.getFechaVencimientoLicencia())
                 .telefono(entity.getTelefono())
+                .email(entity.getEmail())
                 .disponible(entity.isDisponible())
                 .activo(entity.isActivo())
                 .build();
