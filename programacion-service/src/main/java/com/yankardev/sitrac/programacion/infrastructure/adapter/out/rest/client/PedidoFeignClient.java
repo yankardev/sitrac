@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-@FeignClient(name = "pedido-service")
+@FeignClient(name = "comercial-service")
 public interface PedidoFeignClient {
 
     @GetMapping("/api/pedidos/{id}")
