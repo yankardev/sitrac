@@ -26,8 +26,8 @@ public class RabbitMqConfig {
     }
 
     @Bean
-    Binding programacionBinding(Queue notificacionesQueue, TopicExchange sitracExchange) {
-        return BindingBuilder.bind(notificacionesQueue).to(sitracExchange).with("programacion.*");
+    Binding combustibleBinding(Queue notificacionesQueue, TopicExchange sitracExchange) {
+        return BindingBuilder.bind(notificacionesQueue).to(sitracExchange).with("combustible.*");
     }
 
     @Bean
