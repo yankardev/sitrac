@@ -14,7 +14,8 @@
 x-common-env: &common-env
   MYSQL_USER: root
   MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sitrac}
-  EUREKA_URL: http://eureka-server:8761/eureka/
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+  EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
 
 x-service: &service
   restart: unless-stopped
@@ -172,10 +173,10 @@ services:
     environment:
       <<: *common-env
       MYSQL_PROGRAMACION_URL: "jdbc:mysql://mysql:3306/sitrac_programaciones?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       mysql:
         condition: service_healthy
@@ -199,10 +200,10 @@ services:
       MYSQL_VIAJE_URL: "jdbc:mysql://mysql:3306/sitrac_viajes?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima"
       PROGRAMACION_SERVICE_URL: http://programacion-service:8086
       SOMMA_SERVICE_URL: http://somma-service:8089
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
     depends_on:
       mysql:
         condition: service_healthy
@@ -277,7 +278,7 @@ services:
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
-      MAIL_FROM: ${MAIL_FROM:-${MAIL_USERNAME:-}}
+      MAIL_FROM: ${MAIL_FROM:-}
     depends_on:
       rabbitmq:
         condition: service_healthy
