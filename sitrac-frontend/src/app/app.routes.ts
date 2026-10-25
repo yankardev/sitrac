@@ -13,15 +13,11 @@ import { Flota } from './pages/flota/flota';
 import { Programacion } from './pages/programacion/programacion';
 import { Viajes } from './pages/viajes/viajes';
 import { Combustible } from './pages/combustible/combustible';
-import { Mantenimiento } from './pages/mantenimiento/mantenimiento';
-import { Somma } from './pages/somma/somma';
 import { Seguridad } from './pages/seguridad/seguridad';
 
-const TODOS = ['ADMIN', 'OPERADOR', 'SOMMA', 'MANTENIMIENTO', 'SUPERVISOR'];
+const TODOS = ['ADMIN', 'OPERADOR', 'COMBUSTIBLE', 'SUPERVISOR'];
 const OPERACION = ['ADMIN', 'OPERADOR', 'SUPERVISOR'];
-const FLOTA = ['ADMIN', 'OPERADOR', 'MANTENIMIENTO', 'SUPERVISOR'];
-const MANTENIMIENTO_ROLES = ['ADMIN', 'MANTENIMIENTO', 'SUPERVISOR'];
-const SOMMA_ROLES = ['ADMIN', 'SOMMA', 'SUPERVISOR'];
+const COMBUSTIBLE_ROLES = ['ADMIN', 'COMBUSTIBLE', 'SUPERVISOR'];
 const SOLO_ADMIN = ['ADMIN'];
 
 export const routes: Routes = [
@@ -73,7 +69,7 @@ export const routes: Routes = [
         path: 'flota',
         component: Flota,
         canActivate: [roleGuard],
-        data: { roles: FLOTA }
+        data: { roles: OPERACION }
       },
       {
         path: 'viajes',
@@ -85,19 +81,7 @@ export const routes: Routes = [
         path: 'combustible',
         component: Combustible,
         canActivate: [roleGuard],
-        data: { roles: OPERACION }
-      },
-      {
-        path: 'mantenimiento',
-        component: Mantenimiento,
-        canActivate: [roleGuard],
-        data: { roles: MANTENIMIENTO_ROLES }
-      },
-      {
-        path: 'somma',
-        component: Somma,
-        canActivate: [roleGuard],
-        data: { roles: SOMMA_ROLES }
+        data: { roles: COMBUSTIBLE_ROLES }
       },
       {
         path: 'seguridad',
