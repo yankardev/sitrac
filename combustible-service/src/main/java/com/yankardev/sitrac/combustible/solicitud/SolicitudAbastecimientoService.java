@@ -76,6 +76,10 @@ public class SolicitudAbastecimientoService {
         solicitud.setFechaConfirmacion(LocalDateTime.now());
 
         SolicitudAbastecimiento confirmada = repository.save(solicitud);
+
+        // El proceso principal no depende del envío de la notificación.
+        // Si RabbitMQ falla, el abastecimiento sigue confirmado y la evidencia
+        // podrá regenerarse posteriormente desde la interfaz.
         publicarConfirmacion(confirmada);
         return confirmada;
     }
@@ -99,7 +103,9 @@ public class SolicitudAbastecimientoService {
             throw new ReglaNegocioException("La solicitud confirmada no tiene datos completos de abastecimiento");
         }
 
-        publicarConfirmacion(solicitud);
+        if (!publicarConfirmacion(solicitud)) {
+            throw new ReglaNegocioException("No se pudo publicar la notificación de abastecimiento");
+        }
         return solicitud;
     }
 
@@ -128,7 +134,7 @@ public class SolicitudAbastecimientoService {
         return guardada;
     }
 
-    private void publicarConfirmacion(SolicitudAbastecimiento solicitud) {
+    private boolean publicarConfirmacion(SolicitudAbastecimiento solicitud) {
         Map<String, Object> evento = new LinkedHashMap<>();
         evento.put("tipoEvento", "ABASTECIMIENTO_CONFIRMADO");
         evento.put("solicitudId", solicitud.getId());
@@ -143,10 +149,11 @@ public class SolicitudAbastecimientoService {
         try {
             rabbitTemplate.convertAndSend(RabbitCombustibleConfig.EXCHANGE, ROUTING_KEY_CONFIRMADA, evento);
             log.info("Evento ABASTECIMIENTO_CONFIRMADO publicado para solicitud {}", solicitud.getId());
+            return true;
         } catch (AmqpException ex) {
             log.warn("La solicitud {} fue confirmada, pero no se pudo publicar la notificación: {}",
                     solicitud.getId(), ex.getMessage());
-            throw new ReglaNegocioException("No se pudo publicar la notificación de abastecimiento");
+            return false;
         }
     }
 
