@@ -7,15 +7,10 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-sitrac}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-sitracmq}
 
-  programacion-service:
+  operaciones-service:
     environment:
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sitrac}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
-
-  viaje-service:
-    environment:
-      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-sitrac}
-      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
+      RABBITMQ_USER: ${RABBITMQ_USER:-sitrac}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-sitracmq}
 
   notification-service:
     environment:
