@@ -13,8 +13,6 @@ COPY conductor-service/pom.xml conductor-service/
 COPY flota-service/pom.xml flota-service/
 COPY programacion-service/pom.xml programacion-service/
 COPY viaje-service/pom.xml viaje-service/
-COPY mantenimiento-service/pom.xml mantenimiento-service/
-COPY somma-service/pom.xml somma-service/
 COPY combustible-service/pom.xml combustible-service/
 COPY notification-service/pom.xml notification-service/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
