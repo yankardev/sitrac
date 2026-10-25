@@ -54,6 +54,10 @@ spring:
               uri: lb://combustible-service
               predicates:
                 - Path=/api/combustible/**
+            - id: notification-service
+              uri: lb://notification-service
+              predicates:
+                - Path=/api/notificaciones/**
 
 eureka:
   client:
