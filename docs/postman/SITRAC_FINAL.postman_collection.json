@@ -1,0 +1,88 @@
+{
+  "info": {
+    "name": "SITRAC - Flujo Final",
+    "description": "Colección alineada con el alcance final: programación, validaciones, combustible, viaje y notificaciones.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "pedidoId", "value": "4" },
+    { "key": "conductorId", "value": "4" },
+    { "key": "tractoId", "value": "5" },
+    { "key": "semirremolqueId", "value": "4" },
+    { "key": "programacionId", "value": "1" },
+    { "key": "solicitudId", "value": "1" },
+    { "key": "viajeId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "01 - Autenticación",
+      "item": [
+        {
+          "name": "Login operador",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"operador.sitrac\",\n  \"password\": \"Operador123*\"\n}" },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Datos operativos",
+      "item": [
+        { "name": "Listar clientes", "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes" } },
+        { "name": "Listar pedidos", "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos" } },
+        { "name": "Listar conductores", "request": { "method": "GET", "url": "{{baseUrl}}/api/conductores" } },
+        { "name": "Listar tractos", "request": { "method": "GET", "url": "{{baseUrl}}/api/tractos" } },
+        { "name": "Listar semirremolques", "request": { "method": "GET", "url": "{{baseUrl}}/api/semirremolques" } }
+      ]
+    },
+    {
+      "name": "03 - Programación",
+      "item": [
+        {
+          "name": "Crear programación",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": {{pedidoId}},\n  \"conductorId\": {{conductorId}},\n  \"tractoId\": {{tractoId}},\n  \"semirremolqueId\": {{semirremolqueId}},\n  \"fechaProgramada\": \"2026-10-26T08:00:00\",\n  \"observacion\": \"Programación de demostración SITRAC\"\n}"
+            },
+            "url": "{{baseUrl}}/api/programaciones"
+          }
+        },
+        { "name": "Listar programaciones", "request": { "method": "GET", "url": "{{baseUrl}}/api/programaciones" } },
+        { "name": "Consultar programación", "request": { "method": "GET", "url": "{{baseUrl}}/api/programaciones/{{programacionId}}" } }
+      ]
+    },
+    {
+      "name": "04 - Combustible asíncrono",
+      "item": [
+        { "name": "Listar solicitudes", "request": { "method": "GET", "url": "{{baseUrl}}/api/combustible/solicitudes" } },
+        {
+          "name": "Confirmar abastecimiento",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"puntoAbastecimiento\": \"Base Trujillo - Tanque 01\",\n  \"cantidadGalones\": 35,\n  \"observacion\": \"Abastecimiento autorizado para el servicio\"\n}"
+            },
+            "url": "{{baseUrl}}/api/combustible/solicitudes/{{solicitudId}}/confirmar"
+          }
+        },
+        { "name": "Historial de combustible", "request": { "method": "GET", "url": "{{baseUrl}}/api/combustible/abastecimientos" } }
+      ]
+    },
+    {
+      "name": "05 - Viajes",
+      "item": [
+        { "name": "Listar viajes", "request": { "method": "GET", "url": "{{baseUrl}}/api/viajes" } },
+        { "name": "Consultar viaje", "request": { "method": "GET", "url": "{{baseUrl}}/api/viajes/{{viajeId}}" } }
+      ]
+    }
+  ]
+}
