@@ -9,11 +9,17 @@ import {
   SolicitudAbastecimiento
 } from '../models/combustible.model';
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class CombustibleService {
   private readonly http = inject(HttpClient);
-  private readonly abastecimientosUrl = '/api/combustible/abastecimientos';
+  private readonly apiUrl = '/api/combustible/abastecimientos';
   private readonly solicitudesUrl = '/api/combustible/solicitudes';
+
+  listar(): Observable<AbastecimientoCombustible[]> {
+    return this.http.get<AbastecimientoCombustible[]>(this.apiUrl);
+  }
 
   listarSolicitudes(): Observable<SolicitudAbastecimiento[]> {
     return this.http.get<SolicitudAbastecimiento[]>(this.solicitudesUrl);
@@ -26,19 +32,15 @@ export class CombustibleService {
     return this.http.put<SolicitudAbastecimiento>(`${this.solicitudesUrl}/${id}/confirmar`, payload);
   }
 
-  listar(): Observable<AbastecimientoCombustible[]> {
-    return this.http.get<AbastecimientoCombustible[]>(this.abastecimientosUrl);
-  }
-
   crear(abastecimiento: AbastecimientoForm): Observable<AbastecimientoCombustible> {
-    return this.http.post<AbastecimientoCombustible>(this.abastecimientosUrl, abastecimiento);
+    return this.http.post<AbastecimientoCombustible>(this.apiUrl, abastecimiento);
   }
 
   actualizar(id: number, abastecimiento: AbastecimientoForm): Observable<AbastecimientoCombustible> {
-    return this.http.put<AbastecimientoCombustible>(`${this.abastecimientosUrl}/${id}`, abastecimiento);
+    return this.http.put<AbastecimientoCombustible>(`${this.apiUrl}/${id}`, abastecimiento);
   }
 
   eliminar(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.abastecimientosUrl}/${id}`);
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }

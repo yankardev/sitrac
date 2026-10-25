@@ -20,7 +20,6 @@ export interface ConfirmarSolicitudAbastecimiento {
   observacion: string;
 }
 
-// Se mantienen para compatibilidad con los registros históricos del servicio.
 export interface AbastecimientoCombustible {
   id: number;
   programacionId: number;

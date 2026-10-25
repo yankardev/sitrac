@@ -1,34 +1,47 @@
 # SITRAC — Sistema Integral de Transporte de Carga
 
-SITRAC es una aplicación web para apoyar la gestión de servicios de transporte de carga de **Transportes Hermanos Carranza S.A.C.** El flujo principal cubre pedido, programación, asignación de recursos, coordinación del combustible, seguimiento del viaje y cierre del servicio.
+SITRAC es una aplicación web para apoyar la gestión de servicios de transporte de carga pesada, desde el registro del pedido hasta la finalización del viaje. La solución reduce verificaciones repetitivas, controla la asignación de recursos, coordina el abastecimiento de combustible y automatiza comunicaciones al conductor y al cliente.
 
 ## Arquitectura
 
-- **Frontend:** Angular.
-- **Backend:** Java 21 + Spring Boot.
-- **Entrada única:** Spring Cloud Gateway.
-- **Descubrimiento:** Eureka Server.
-- **Comunicación síncrona:** REST / OpenFeign.
-- **Comunicación asíncrona:** RabbitMQ.
-- **Persistencia:** MySQL + Spring Data JPA.
-- **Seguridad:** Spring Security + BCrypt.
-- **Ejecución integrada:** Docker Compose.
+La solución utiliza:
+
+- **Angular** para la interfaz web.
+- **Java 21 + Spring Boot** para los microservicios.
+- **API Gateway** como punto de entrada.
+- **Eureka Server** para registro y descubrimiento.
+- **OpenFeign** para consultas síncronas en la programación.
+- **RabbitMQ** para eventos asíncronos.
+- **Spring Data JPA + MySQL** para persistencia.
+- **Spring Security + BCrypt** para autenticación y protección de contraseñas.
+- **Docker Compose** para ejecutar el entorno integrado.
 
 ## Microservicios funcionales
 
-| Servicio | Puerto | Responsabilidad |
+| Microservicio | Puerto | Responsabilidad |
 |---|---:|---|
 | auth-service | 8081 | Usuarios, roles e inicio de sesión |
 | cliente-service | 8082 | Clientes |
 | pedido-service | 8083 | Solicitudes de transporte |
-| conductor-service | 8084 | Conductores, disponibilidad y licencia |
+| conductor-service | 8084 | Conductores, licencias y disponibilidad |
 | flota-service | 8085 | Tractos y semirremolques |
 | programacion-service | 8086 | Validación y asignación de recursos |
-| viaje-service | 8087 | Inicio, ejecución y finalización del viaje |
-| combustible-service | 8090 | Solicitudes y confirmación de abastecimiento |
-| notification-service | 8091 | Correos y constancia PDF |
+| viaje-service | 8087 | Ejecución y cierre del viaje |
+| combustible-service | 8090 | Solicitudes y registros de abastecimiento |
+| notification-service | 8091 | Correos y constancia final |
 
-## Flujo principal
+Componentes de infraestructura:
+
+| Componente | Puerto |
+|---|---:|
+| API Gateway | 8080 |
+| Eureka Server | 8761 |
+| RabbitMQ | 5672 |
+| RabbitMQ Management | 15672 |
+| MySQL | 3307 host / 3306 contenedor |
+| Angular | 4200 |
+
+## Flujo operativo principal
 
 ```text
 Cliente / Pedido
@@ -36,112 +49,223 @@ Cliente / Pedido
 Operaciones programa el servicio
       ↓
 programacion-service
-      ├─ OpenFeign → pedido-service
-      ├─ OpenFeign → conductor-service
-      └─ OpenFeign → flota-service
+      ├─ valida pedido
+      ├─ valida conductor y licencia
+      └─ valida tracto, semirremolque y capacidad
       ↓
 PROGRAMACION_CREADA
       ↓ RabbitMQ
 combustible-service
       ↓
-Solicitud PENDIENTE
+Solicitud de abastecimiento PENDIENTE
       ↓
-Personal de Combustible confirma punto + galones
+Personal de Combustible confirma punto y galones
       ↓
 ABASTECIMIENTO_CONFIRMADO
       ↓ RabbitMQ
-notification-service → correo al conductor
+notification-service
+      ↓
+Correo al conductor
       ↓
 Viaje PROGRAMADO → EN_VIAJE → FINALIZADO
-      ↓
-VIAJE_FINALIZADO
       ↓ RabbitMQ
-notification-service → constancia PDF + correo al cliente
+notification-service
+      ↓
+Correo + constancia PDF al cliente
 ```
 
-Al finalizar un viaje, `programacion-service` actualiza el pedido, finaliza la programación y libera conductor, tracto y semirremolque.
+## Programación y validaciones
 
-## Roles internos
+`programacion-service` consulta mediante OpenFeign a:
 
-- `ADMIN`
-- `OPERADOR`
-- `COMBUSTIBLE`
-- `SUPERVISOR`
+- `pedido-service`: estado del pedido, carga y tonelaje;
+- `conductor-service`: estado, disponibilidad y vigencia de licencia;
+- `flota-service`: disponibilidad, capacidad y tipo de unidad.
 
-Conductores y clientes no ingresan a SITRAC; reciben comunicaciones generadas por el sistema.
+Antes de confirmar una programación se valida que:
+
+- el pedido pueda ser atendido;
+- el conductor esté activo, disponible y con licencia vigente;
+- tracto y semirremolque estén disponibles;
+- la capacidad sea suficiente;
+- el semirremolque sea compatible con la carga;
+- conductor y unidades no estén en otra programación activa.
+
+Compatibilidades principales:
+
+| Tipo de carga | Semirremolque |
+|---|---|
+| Cal a granel | Bombona |
+| Cemento en bolsa | Plataforma |
+| Maquinaria | Cama baja |
+| Carga ancha | Cama baja |
+| Carga especial | Cama baja |
+
+## Combustible y RabbitMQ
+
+Al crear una programación, `programacion-service` publica el evento:
+
+```text
+programacion.creada / PROGRAMACION_CREADA
+```
+
+`combustible-service` lo consume desde la cola `sitrac.combustible` y crea una solicitud en estado `PENDIENTE` reutilizando la programación, conductor y tracto.
+
+Endpoints principales:
+
+```http
+GET /api/combustible/solicitudes
+PUT /api/combustible/solicitudes/{id}/confirmar
+```
+
+Al confirmar la solicitud se publica:
+
+```text
+combustible.abastecimiento.confirmado / ABASTECIMIENTO_CONFIRMADO
+```
+
+`notification-service` consume el evento y envía al conductor el punto de abastecimiento, cantidad autorizada y datos relacionados con la operación.
+
+## Cierre del viaje y constancia
+
+Los estados principales del viaje son:
+
+```text
+PROGRAMADO → EN_VIAJE → FINALIZADO
+       └──────────────→ CANCELADO
+```
+
+Al finalizar:
+
+1. `viaje-service` actualiza la operación mediante `programacion-service`.
+2. Pedido y programación quedan finalizados.
+3. Conductor, tracto y semirremolque vuelven a estar disponibles.
+4. Se publica `VIAJE_FINALIZADO` en RabbitMQ.
+5. `notification-service` obtiene la información del cliente.
+6. Se genera una constancia PDF del servicio.
+7. El cliente recibe el correo de finalización con el PDF adjunto.
+
+## Roles
+
+| Rol | Acceso principal |
+|---|---|
+| ADMIN | Gestión general y usuarios |
+| OPERADOR | Clientes, pedidos, conductores, flota, programación y viajes |
+| COMBUSTIBLE | Solicitudes y abastecimientos |
+| SUPERVISOR | Consulta y supervisión operativa |
+
+Conductores y clientes no necesitan ingresar a SITRAC; reciben las comunicaciones generadas por la operación.
+
+## Credenciales de demostración
+
+Al iniciar el sistema, `auth-service` crea estos usuarios si no existen:
+
+| Rol | Usuario | Contraseña |
+|---|---|---|
+| ADMIN | `admin.sitrac` | `Admin123*` |
+| OPERADOR | `operador.sitrac` | `Operador123*` |
+| COMBUSTIBLE | `combustible.sitrac` | `Combustible123*` |
+| SUPERVISOR | `supervisor.sitrac` | `Supervisor123*` |
 
 ## Ejecución con Docker
 
-Para reconstruir una demostración limpia (elimina el volumen de datos anterior):
+Requisito: Docker Desktop iniciado.
 
-```powershell
-docker compose down -v
+```bash
 docker compose up -d --build
+```
+
+En Windows también se puede ejecutar:
+
+```text
+run-all.bat
+```
+
+Verificar contenedores:
+
+```bash
+docker compose ps
 ```
 
 Accesos:
 
-- Frontend: `http://localhost:4200`
+- SITRAC: `http://localhost:4200`
 - API Gateway: `http://localhost:8080`
 - Eureka: `http://localhost:8761`
-- RabbitMQ Management: `http://localhost:15672`
-- MySQL desde Windows: `localhost:3307`
+- RabbitMQ: `http://localhost:15672`
 
-Credenciales RabbitMQ de desarrollo:
+Credenciales RabbitMQ por defecto:
 
-- usuario: `sitrac`
-- contraseña: `sitracmq`
+```text
+usuario: sitrac
+password: sitracmq
+```
 
-### Usuarios de demostración
+Detener el entorno:
 
-Todos usan la contraseña: `Sitrac2026*`
+```bash
+docker compose down
+```
 
-| Rol | Usuario |
-|---|---|
-| Administrador | `admin.sitrac` |
-| Operador | `operador.sitrac` |
-| Combustible | `combustible.sitrac` |
-| Supervisor | `supervisor.sitrac` |
+Si se desea reconstruir también la base demo desde cero:
 
-## Correo real (opcional para la demostración)
+```bash
+docker compose down -v
+docker compose up -d --build
+```
 
-Por defecto `notification-service` trabaja en modo demostración y registra los correos en el log. Para enviar correos reales configure las variables de entorno:
+## Correo real o modo demostración
+
+Por defecto `notification-service` trabaja con:
+
+```text
+SITRAC_MAIL_ENABLED=false
+```
+
+En ese modo las notificaciones se registran en los logs sin requerir credenciales SMTP.
+
+Para envío real se pueden definir:
 
 ```text
 SITRAC_MAIL_ENABLED=true
 MAIL_USERNAME=correo@dominio.com
-MAIL_PASSWORD=clave-o-app-password
+MAIL_PASSWORD=clave-de-aplicacion
 MAIL_FROM=correo@dominio.com
 ```
 
-No se deben guardar contraseñas reales en GitHub.
+No se deben almacenar contraseñas reales en el repositorio.
 
-## Escenario de sustentación recomendado
+## Validación automática
 
-1. Iniciar sesión como Operador.
-2. Registrar/seleccionar cliente y pedido.
-3. Programar el viaje y demostrar las validaciones de conductor y flota.
-4. Mostrar Eureka y la cola/evento en RabbitMQ.
-5. Iniciar sesión como Combustible y atender la solicitud generada automáticamente.
-6. Verificar la notificación al conductor (correo real o log de demostración).
-7. Iniciar y finalizar el viaje.
-8. Verificar la constancia PDF y la notificación final al cliente.
+GitHub Actions ejecuta en cada cambio de la rama final:
 
-## Construcción
+- compilación Maven con Java 21;
+- validación de `docker compose config`;
+- `npm ci`;
+- compilación de Angular.
 
-Backend:
+El flujo se encuentra en `.github/workflows/ci-spring-cloud.yml`.
 
-```powershell
-mvnw.cmd -B -DskipTests package
+## Estructura relevante
+
+```text
+sitrac/
+├── api-gateway/
+├── eureka-server/
+├── auth-service/
+├── cliente-service/
+├── pedido-service/
+├── conductor-service/
+├── flota-service/
+├── programacion-service/
+├── viaje-service/
+├── combustible-service/
+├── notification-service/
+├── sitrac-frontend/
+├── database/
+├── docs/
+├── docker-compose.yml
+└── Dockerfile
 ```
 
-Frontend:
-
-```powershell
-cd sitrac-frontend
-npm ci
-npm run build
-```
-
----
-SITRAC — Sistema Integral de Transporte de Carga
+**SITRAC — Sistema Integral de Transporte de Carga**

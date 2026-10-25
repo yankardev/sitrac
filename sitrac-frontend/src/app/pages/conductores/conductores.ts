@@ -44,20 +44,15 @@ export class Conductores implements OnInit {
         (this.filtroDisponibilidad === 'DISPONIBLE' && conductor.disponible) ||
         (this.filtroDisponibilidad === 'OCUPADO' && !conductor.disponible);
 
-      if (!coincideDisponibilidad) {
-        return false;
-      }
-
-      if (!termino) {
-        return true;
-      }
+      if (!coincideDisponibilidad) return false;
+      if (!termino) return true;
 
       return (
         conductor.dni.includes(termino) ||
         `${conductor.nombres} ${conductor.apellidos}`.toLowerCase().includes(termino) ||
         conductor.numeroLicencia.toLowerCase().includes(termino) ||
         conductor.categoriaLicencia.toLowerCase().includes(termino) ||
-        (conductor.email ?? '').toLowerCase().includes(termino)
+        (conductor.email || '').toLowerCase().includes(termino)
       );
     });
   }
@@ -123,9 +118,7 @@ export class Conductores implements OnInit {
   }
 
   cerrarFormulario(): void {
-    if (this.guardando) {
-      return;
-    }
+    if (this.guardando) return;
 
     this.mostrarFormulario = false;
     this.conductorEditandoId = null;
@@ -221,9 +214,7 @@ export class Conductores implements OnInit {
       `CONFIRMACIÓN FINAL: ¿Deseas eliminar definitivamente a "${conductor.nombres} ${conductor.apellidos}"?`
     );
 
-    if (!confirmado) {
-      return;
-    }
+    if (!confirmado) return;
 
     this.error = '';
     this.mensaje = '';
@@ -254,29 +245,15 @@ export class Conductores implements OnInit {
 
   estadoLicencia(conductor: Conductor): string {
     const dias = this.diasParaVencimiento(conductor);
-
-    if (dias < 0) {
-      return 'VENCIDA';
-    }
-
-    if (dias <= 30) {
-      return 'POR VENCER';
-    }
-
+    if (dias < 0) return 'VENCIDA';
+    if (dias <= 30) return 'POR VENCER';
     return 'VIGENTE';
   }
 
   claseLicencia(conductor: Conductor): string {
     const estado = this.estadoLicencia(conductor);
-
-    if (estado === 'VENCIDA') {
-      return 'expired';
-    }
-
-    if (estado === 'POR VENCER') {
-      return 'warning';
-    }
-
+    if (estado === 'VENCIDA') return 'expired';
+    if (estado === 'POR VENCER') return 'warning';
     return 'valid';
   }
 
@@ -301,26 +278,13 @@ export class Conductores implements OnInit {
 
   private obtenerMensajeError(error: any, fallback: string): string {
     const respuesta = error?.error;
-
-    if (typeof respuesta === 'string' && respuesta.trim()) {
-      return respuesta;
-    }
-
-    if (respuesta?.error) {
-      return respuesta.error;
-    }
-
-    if (respuesta?.message) {
-      return respuesta.message;
-    }
-
+    if (typeof respuesta === 'string' && respuesta.trim()) return respuesta;
+    if (respuesta?.error) return respuesta.error;
+    if (respuesta?.message) return respuesta.message;
     if (respuesta?.campos) {
       const primerMensaje = Object.values(respuesta.campos)[0];
-      if (typeof primerMensaje === 'string') {
-        return primerMensaje;
-      }
+      if (typeof primerMensaje === 'string') return primerMensaje;
     }
-
     return fallback;
   }
 }

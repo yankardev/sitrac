@@ -1,9 +1,262 @@
-<header class="topbar"><div><span class="breadcrumb">Operaciones / Combustible</span><h1>Solicitudes de abastecimiento</h1><p>Las solicitudes se generan automáticamente cuando Operaciones confirma una programación.</p></div><div class="top-actions"><button class="notification" type="button" (click)="cargar()">↻</button></div></header>
+<header class="page-header">
+  <div>
+    <span class="breadcrumb">Operaciones / Combustible</span>
+    <h1>Coordinación de abastecimiento</h1>
+    <p>Atiende las solicitudes generadas automáticamente al programar un servicio.</p>
+  </div>
 
-<div class="alert success" *ngIf="mensaje">{{ mensaje }}</div><div class="alert error" *ngIf="error">{{ error }}</div>
-<section class="fuel-metrics"><article><span>Pendientes</span><strong>{{ pendientes }}</strong></article><article><span>Confirmadas</span><strong>{{ confirmadas }}</strong></article><article><span>Galones confirmados</span><strong>{{ galonesConfirmados | number:'1.0-2' }}</strong></article></section>
+  <button class="secondary-button" type="button" (click)="cargarDatos()" [disabled]="cargando">
+    {{ cargando ? 'Actualizando...' : 'Actualizar' }}
+  </button>
+</header>
 
-<section class="fuel-panel"><div class="fuel-toolbar"><input type="search" [(ngModel)]="busqueda" placeholder="Buscar solicitud, programación, conductor o tracto"><select [(ngModel)]="filtroEstado"><option value="TODOS">Todos los estados</option><option value="PENDIENTE">Pendientes</option><option value="CONFIRMADA">Confirmadas</option></select></div>
-<div class="fuel-loading" *ngIf="cargando">Cargando solicitudes...</div><div class="table-wrapper" *ngIf="!cargando"><table><thead><tr><th>Solicitud</th><th>Programación</th><th>Conductor</th><th>Tracto</th><th>Generada</th><th>Estado</th><th>Abastecimiento</th><th></th></tr></thead><tbody><tr *ngFor="let item of filtradas"><td><strong>#SOL-{{ codigo(item.id) }}</strong></td><td>{{ codigoProgramacion(item.programacionId) }}</td><td>{{ conductorNombre(item.conductorId) }}</td><td>{{ tractoPlaca(item.tractoId) }}</td><td>{{ item.fechaGeneracion | date:'dd/MM/yyyy HH:mm' }}</td><td><span class="fuel-status" [class.confirmed]="item.estado === 'CONFIRMADA'">{{ etiquetaEstado(item.estado) }}</span></td><td><ng-container *ngIf="item.estado === 'CONFIRMADA'; else pendiente"><strong>{{ item.cantidadGalones }} gal</strong><small>{{ item.puntoAbastecimiento }}</small></ng-container><ng-template #pendiente><span>Por definir</span></ng-template></td><td><button type="button" class="fuel-primary" *ngIf="item.estado === 'PENDIENTE'" (click)="abrirConfirmacion(item)">Atender</button></td></tr><tr *ngIf="filtradas.length === 0"><td colspan="8" class="empty-row">No hay solicitudes para mostrar.</td></tr></tbody></table></div></section>
+<div class="alert success" *ngIf="mensaje">
+  <span>✓</span>
+  {{ mensaje }}
+</div>
 
-<div class="fuel-modal-backdrop" *ngIf="mostrarFormulario"><section class="fuel-modal"><div class="fuel-modal-head"><div><span>Confirmación de abastecimiento</span><h2>{{ seleccionada ? codigoProgramacion(seleccionada.programacionId) : '' }}</h2></div><button type="button" (click)="cerrar()">×</button></div><div class="fuel-context" *ngIf="seleccionada"><p><strong>Conductor:</strong> {{ conductorNombre(seleccionada.conductorId) }}</p><p><strong>Tracto:</strong> {{ tractoPlaca(seleccionada.tractoId) }}</p></div><label>Punto de abastecimiento<input [(ngModel)]="formulario.puntoAbastecimiento" placeholder="Ej. Base Trujillo - surtidor 1"></label><label>Cantidad autorizada (galones)<input type="number" min="0.001" step="0.1" [(ngModel)]="formulario.cantidadGalones"></label><label>Observación<textarea rows="3" [(ngModel)]="formulario.observacion" placeholder="Dato opcional"></textarea></label><p class="fuel-help">Al confirmar se publicará un evento RabbitMQ y notification-service enviará la información al correo del conductor.</p><div class="fuel-actions"><button type="button" (click)="cerrar()">Cancelar</button><button type="button" class="fuel-primary" [disabled]="guardando" (click)="confirmar()">{{ guardando ? 'Confirmando...' : 'Confirmar abastecimiento' }}</button></div></section></div>
+<div class="alert error" *ngIf="error">
+  <span>!</span>
+  {{ error }}
+</div>
+
+<section class="summary-grid">
+  <article class="summary-card">
+    <div class="summary-icon orange">!</div>
+    <div>
+      <span>Solicitudes pendientes</span>
+      <strong>{{ solicitudesPendientes.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon green">✓</div>
+    <div>
+      <span>Solicitudes confirmadas</span>
+      <strong>{{ solicitudesConfirmadas.length }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon blue">◉</div>
+    <div>
+      <span>Galones autorizados</span>
+      <strong>{{ totalGalonesConfirmados | number:'1.0-2' }}</strong>
+    </div>
+  </article>
+
+  <article class="summary-card">
+    <div class="summary-icon purple">◆</div>
+    <div>
+      <span>Registros históricos</span>
+      <strong>{{ abastecimientos.length }}</strong>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Solicitudes pendientes</h2>
+      <p>Se generan automáticamente cuando Operaciones confirma una programación.</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="cargando">
+    <div class="spinner"></div>
+    <span>Cargando solicitudes...</span>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!cargando && solicitudesPendientes.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Solicitud</th>
+          <th>Programación</th>
+          <th>Conductor</th>
+          <th>Tracto</th>
+          <th>Generada</th>
+          <th>Estado</th>
+          <th class="actions-column">Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let solicitud of solicitudesPendientes">
+          <td><strong class="record-code">#SOL-{{ codigo(solicitud.id) }}</strong></td>
+          <td>
+            <strong>{{ codigoProgramacion(solicitud.programacionId) }}</strong>
+            <span class="secondary">{{ rutaProgramacion(solicitud.programacionId) }}</span>
+          </td>
+          <td>{{ conductorNombre(solicitud.conductorId) }}</td>
+          <td><strong class="unit-name">{{ tractoPlaca(solicitud.tractoId) }}</strong></td>
+          <td>{{ solicitud.fechaGeneracion | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td><span class="type-badge third-party">Pendiente</span></td>
+          <td class="actions-column">
+            <button class="primary-button" type="button" (click)="abrirConfirmacion(solicitud)">
+              Atender
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state" *ngIf="!cargando && solicitudesPendientes.length === 0">
+    <div class="empty-icon">✓</div>
+    <h3>No hay solicitudes pendientes</h3>
+    <p>Las nuevas programaciones aparecerán aquí automáticamente.</p>
+  </div>
+</section>
+
+<section class="panel panel-secondary">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Solicitudes confirmadas</h2>
+      <p>Abastecimientos atendidos y notificados al conductor.</p>
+    </div>
+  </div>
+
+  <div class="table-wrapper" *ngIf="solicitudesConfirmadas.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Solicitud</th>
+          <th>Programación</th>
+          <th>Unidad / conductor</th>
+          <th>Punto</th>
+          <th>Galones</th>
+          <th>Confirmación</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let solicitud of solicitudesConfirmadas">
+          <td><strong class="record-code">#SOL-{{ codigo(solicitud.id) }}</strong></td>
+          <td>{{ codigoProgramacion(solicitud.programacionId) }}</td>
+          <td>
+            <strong class="unit-name">{{ tractoPlaca(solicitud.tractoId) }}</strong>
+            <span class="secondary">{{ conductorNombre(solicitud.conductorId) }}</span>
+          </td>
+          <td>{{ solicitud.puntoAbastecimiento }}</td>
+          <td><strong>{{ solicitud.cantidadGalones | number:'1.0-2' }} gal</strong></td>
+          <td>{{ solicitud.fechaConfirmacion | date:'dd/MM/yyyy HH:mm' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty-state compact" *ngIf="solicitudesConfirmadas.length === 0">
+    <p>Aún no se han confirmado solicitudes.</p>
+  </div>
+</section>
+
+<section class="panel panel-secondary">
+  <div class="panel-toolbar">
+    <div>
+      <h2>Historial de abastecimientos</h2>
+      <p>Registros operativos de combustible vinculados a programaciones anteriores.</p>
+    </div>
+  </div>
+
+  <div class="table-wrapper" *ngIf="abastecimientos.length > 0">
+    <table>
+      <thead>
+        <tr>
+          <th>Registro</th>
+          <th>Programación</th>
+          <th>Unidad / conductor</th>
+          <th>Tipo</th>
+          <th>Galones</th>
+          <th>Fecha</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of abastecimientos">
+          <td><strong class="record-code">#AB-{{ codigo(item.id) }}</strong></td>
+          <td>{{ codigoProgramacion(item.programacionId) }}</td>
+          <td>
+            <strong class="unit-name">{{ tractoPlaca(item.tractoId) }}</strong>
+            <span class="secondary">{{ conductorNombre(item.conductorId) }}</span>
+          </td>
+          <td>
+            <span class="type-badge" [class.internal]="item.tipoAbastecimiento === 'INTERNO'" [class.third-party]="item.tipoAbastecimiento === 'TERCERO'">
+              {{ item.tipoAbastecimiento === 'INTERNO' ? 'Interno' : 'Tercero' }}
+            </span>
+          </td>
+          <td>{{ item.cantidadGalones | number:'1.0-2' }} gal</td>
+          <td>{{ item.fechaHora | date:'dd/MM/yyyy HH:mm' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" *ngIf="solicitudSeleccionada" (click)="cerrarConfirmacion()">
+  <section class="form-drawer" (click)="$event.stopPropagation()">
+    <div class="drawer-header">
+      <div>
+        <span>CONFIRMAR ABASTECIMIENTO</span>
+        <h2>Solicitud #SOL-{{ codigo(solicitudSeleccionada.id) }}</h2>
+        <p>Los datos del conductor, tracto y programación ya fueron heredados automáticamente.</p>
+      </div>
+      <button class="close-button" type="button" (click)="cerrarConfirmacion()">×</button>
+    </div>
+
+    <div class="assignment-card full">
+      <div>
+        <span>Programación</span>
+        <strong>{{ codigoProgramacion(solicitudSeleccionada.programacionId) }}</strong>
+      </div>
+      <div>
+        <span>Conductor</span>
+        <strong>{{ conductorNombre(solicitudSeleccionada.conductorId) }}</strong>
+      </div>
+      <div>
+        <span>Tracto</span>
+        <strong>{{ tractoPlaca(solicitudSeleccionada.tractoId) }}</strong>
+      </div>
+    </div>
+
+    <form #confirmacionForm="ngForm" (ngSubmit)="confirmarSolicitud()">
+      <div class="form-grid confirmation-grid">
+        <label class="field full">
+          <span>Punto de abastecimiento *</span>
+          <select name="punto" [(ngModel)]="formularioConfirmacion.puntoAbastecimiento" required>
+            <option value="" disabled>Selecciona un punto</option>
+            <option *ngFor="let punto of puntosAbastecimiento" [value]="punto">{{ punto }}</option>
+          </select>
+        </label>
+
+        <label class="field full">
+          <span>Cantidad autorizada (galones) *</span>
+          <input
+            name="galones"
+            type="number"
+            min="0.01"
+            step="0.01"
+            [(ngModel)]="formularioConfirmacion.cantidadGalones"
+            required
+          />
+        </label>
+
+        <label class="field full">
+          <span>Observación</span>
+          <textarea
+            name="observacion"
+            rows="3"
+            maxlength="500"
+            [(ngModel)]="formularioConfirmacion.observacion"
+            placeholder="Indicaciones adicionales para el conductor"></textarea>
+        </label>
+      </div>
+
+      <div class="drawer-actions">
+        <button class="secondary-button" type="button" [disabled]="confirmando" (click)="cerrarConfirmacion()">
+          Cancelar
+        </button>
+        <button class="primary-button" type="submit" [disabled]="confirmacionForm.invalid || confirmando">
+          {{ confirmando ? 'Confirmando...' : 'Confirmar y notificar' }}
+        </button>
+      </div>
+    </form>
+  </section>
+</div>
