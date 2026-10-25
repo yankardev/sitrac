@@ -1,5 +1,26 @@
 export type TipoAbastecimiento = 'INTERNO' | 'TERCERO';
+export type EstadoSolicitudAbastecimiento = 'PENDIENTE' | 'CONFIRMADA';
 
+export interface SolicitudAbastecimiento {
+  id: number;
+  programacionId: number;
+  conductorId: number;
+  tractoId: number;
+  fechaGeneracion: string;
+  estado: EstadoSolicitudAbastecimiento;
+  puntoAbastecimiento: string | null;
+  cantidadGalones: number | null;
+  observacion: string | null;
+  fechaConfirmacion: string | null;
+}
+
+export interface ConfirmarSolicitudAbastecimiento {
+  puntoAbastecimiento: string;
+  cantidadGalones: number;
+  observacion: string;
+}
+
+// Se mantienen para compatibilidad con los registros históricos del servicio.
 export interface AbastecimientoCombustible {
   id: number;
   programacionId: number;

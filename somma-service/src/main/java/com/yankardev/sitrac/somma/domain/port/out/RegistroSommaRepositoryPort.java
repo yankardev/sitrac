@@ -1,2 +1,0 @@
-package com.yankardev.sitrac.somma.domain.port.out;import com.yankardev.sitrac.somma.domain.model.RegistroSomma;import java.util.*;
-public interface RegistroSommaRepositoryPort{RegistroSomma guardar(RegistroSomma r);List<RegistroSomma> listar();Optional<RegistroSomma> buscarPorId(Long id);void eliminarPorId(Long id);}

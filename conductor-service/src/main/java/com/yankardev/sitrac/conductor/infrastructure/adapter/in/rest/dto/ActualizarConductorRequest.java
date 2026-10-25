@@ -1,5 +1,6 @@
 package com.yankardev.sitrac.conductor.infrastructure.adapter.in.rest.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -33,6 +34,10 @@ public record ActualizarConductorRequest(
 
         @Size(max = 30, message = "El teléfono no puede superar 30 caracteres")
         String telefono,
+
+        @Email(message = "El correo del conductor no tiene un formato válido")
+        @Size(max = 120, message = "El correo no puede superar 120 caracteres")
+        String email,
 
         boolean disponible,
         boolean activo

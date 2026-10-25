@@ -56,7 +56,8 @@ export class Conductores implements OnInit {
         conductor.dni.includes(termino) ||
         `${conductor.nombres} ${conductor.apellidos}`.toLowerCase().includes(termino) ||
         conductor.numeroLicencia.toLowerCase().includes(termino) ||
-        conductor.categoriaLicencia.toLowerCase().includes(termino)
+        conductor.categoriaLicencia.toLowerCase().includes(termino) ||
+        (conductor.email ?? '').toLowerCase().includes(termino)
       );
     });
   }
@@ -112,6 +113,7 @@ export class Conductores implements OnInit {
       categoriaLicencia: conductor.categoriaLicencia,
       fechaVencimientoLicencia: conductor.fechaVencimientoLicencia,
       telefono: conductor.telefono ?? '',
+      email: conductor.email ?? '',
       disponible: conductor.disponible,
       activo: conductor.activo
     };
@@ -143,6 +145,7 @@ export class Conductores implements OnInit {
       categoriaLicencia: this.formulario.categoriaLicencia.trim(),
       fechaVencimientoLicencia: this.formulario.fechaVencimientoLicencia,
       telefono: this.formulario.telefono.trim(),
+      email: this.formulario.email.trim(),
       disponible: this.formulario.disponible,
       activo: this.formulario.activo
     };
@@ -155,7 +158,8 @@ export class Conductores implements OnInit {
           numeroLicencia: payload.numeroLicencia,
           categoriaLicencia: payload.categoriaLicencia,
           fechaVencimientoLicencia: payload.fechaVencimientoLicencia,
-          telefono: payload.telefono
+          telefono: payload.telefono,
+          email: payload.email
         })
       : this.conductorService.actualizar(this.conductorEditandoId, payload);
 
@@ -289,6 +293,7 @@ export class Conductores implements OnInit {
       categoriaLicencia: 'AIIIC',
       fechaVencimientoLicencia: '',
       telefono: '',
+      email: '',
       disponible: true,
       activo: true
     };

@@ -21,6 +21,7 @@ public class Conductor {
     private String categoriaLicencia;
     private LocalDate fechaVencimientoLicencia;
     private String telefono;
+    private String email;
     private boolean disponible;
     private boolean activo;
 }

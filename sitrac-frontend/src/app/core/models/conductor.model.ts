@@ -7,6 +7,7 @@ export interface Conductor {
   categoriaLicencia: string;
   fechaVencimientoLicencia: string;
   telefono: string | null;
+  email: string | null;
   disponible: boolean;
   activo: boolean;
 }
@@ -19,6 +20,7 @@ export interface ConductorForm {
   categoriaLicencia: string;
   fechaVencimientoLicencia: string;
   telefono: string;
+  email: string;
   disponible: boolean;
   activo: boolean;
 }

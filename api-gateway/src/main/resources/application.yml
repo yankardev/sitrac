@@ -50,14 +50,6 @@ spring:
               uri: lb://viaje-service
               predicates:
                 - Path=/api/viajes/**
-            - id: mantenimiento-service
-              uri: lb://mantenimiento-service
-              predicates:
-                - Path=/api/mantenimientos/**
-            - id: somma-service
-              uri: lb://somma-service
-              predicates:
-                - Path=/api/somma/**
             - id: combustible-service
               uri: lb://combustible-service
               predicates:

@@ -1,1 +1,0 @@
-package com.yankardev.sitrac.somma.infrastructure.adapter.out.persistence;import org.springframework.data.jpa.repository.JpaRepository;public interface RegistroSommaJpaRepository extends JpaRepository<RegistroSommaJpaEntity,Long>{}

@@ -7,7 +7,6 @@ import com.yankardev.sitrac.viaje.domain.model.Viaje;
 import com.yankardev.sitrac.viaje.domain.port.in.ViajeUseCase;
 import com.yankardev.sitrac.viaje.domain.port.out.NotificacionEventPort;
 import com.yankardev.sitrac.viaje.domain.port.out.ProgramacionConsultaPort;
-import com.yankardev.sitrac.viaje.domain.port.out.SommaConsultaPort;
 import com.yankardev.sitrac.viaje.domain.port.out.ViajeRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,6 @@ public class ViajeService implements ViajeUseCase {
 
     private final ViajeRepositoryPort repo;
     private final ProgramacionConsultaPort programacionConsulta;
-    private final SommaConsultaPort sommaConsulta;
     private final NotificacionEventPort notificacionEventPort;
 
     @Override
@@ -73,7 +71,6 @@ public class ViajeService implements ViajeUseCase {
         if (cambioEstado
                 && actual.getEstado() == EstadoViaje.PROGRAMADO
                 && nuevoEstado == EstadoViaje.EN_VIAJE) {
-            validarCharlaSommaCerrada(actual.getProgramacionId());
             programacionConsulta.iniciarViaje(actual.getProgramacionId());
         }
 
@@ -133,14 +130,6 @@ public class ViajeService implements ViajeUseCase {
         if (!"PROGRAMADA".equals(programacion.estado())) {
             throw new ReglaNegocioException(
                     "La programación debe estar en estado PROGRAMADA para generar el viaje"
-            );
-        }
-    }
-
-    private void validarCharlaSommaCerrada(Long programacionId) {
-        if (!sommaConsulta.existeCharlaCerradaParaProgramacion(programacionId)) {
-            throw new ReglaNegocioException(
-                    "No se puede iniciar el viaje sin una charla SOMMA cerrada para la programación"
             );
         }
     }

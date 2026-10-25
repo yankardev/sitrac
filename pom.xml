@@ -34,8 +34,6 @@
         <module>flota-service</module>
         <module>programacion-service</module>
         <module>viaje-service</module>
-        <module>mantenimiento-service</module>
-        <module>somma-service</module>
         <module>combustible-service</module>
         <module>notification-service</module>
     </modules>
