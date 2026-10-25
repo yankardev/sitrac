@@ -16,6 +16,10 @@ COPY viaje-service/pom.xml viaje-service/
 COPY mantenimiento-service/pom.xml mantenimiento-service/
 COPY somma-service/pom.xml somma-service/
 COPY combustible-service/pom.xml combustible-service/
+COPY comercial-service/pom.xml comercial-service/
+COPY operaciones-service/pom.xml operaciones-service/
+COPY recursos-service/pom.xml recursos-service/
+COPY prevencion-service/pom.xml prevencion-service/
 COPY notification-service/pom.xml notification-service/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 COPY . .
