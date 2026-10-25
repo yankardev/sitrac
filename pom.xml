@@ -21,9 +21,12 @@
     <properties>
         <java.version>21</java.version>
         <lombok.version>1.18.46</lombok.version>
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
     </properties>
 
     <modules>
+        <module>eureka-server</module>
+        <module>api-gateway</module>
         <module>auth-service</module>
         <module>cliente-service</module>
         <module>pedido-service</module>
@@ -34,7 +37,27 @@
         <module>mantenimiento-service</module>
         <module>somma-service</module>
         <module>combustible-service</module>
+        <module>notification-service</module>
     </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
