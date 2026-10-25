@@ -5,6 +5,7 @@ import com.yankardev.sitrac.programacion.application.exception.ReglaNegocioExcep
 import com.yankardev.sitrac.programacion.domain.model.EstadoProgramacion;
 import com.yankardev.sitrac.programacion.domain.model.Programacion;
 import com.yankardev.sitrac.programacion.domain.port.in.ProgramacionUseCase;
+import com.yankardev.sitrac.programacion.domain.port.out.NotificacionEventPort;
 import com.yankardev.sitrac.programacion.domain.port.out.OperacionConsultaPort;
 import com.yankardev.sitrac.programacion.domain.port.out.ProgramacionRepositoryPort;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class ProgramacionService implements ProgramacionUseCase {
 
     private final ProgramacionRepositoryPort repo;
     private final OperacionConsultaPort consulta;
+    private final NotificacionEventPort notificacionEventPort;
 
     @Override
     public Programacion crear(Programacion p) {
@@ -51,6 +53,13 @@ public class ProgramacionService implements ProgramacionUseCase {
         consulta.cambiarDisponibilidadConductor(p.getConductorId(), false);
         consulta.cambiarEstadoTracto(p.getTractoId(), "ASIGNADO");
         consulta.cambiarEstadoSemirremolque(p.getSemirremolqueId(), "ASIGNADO");
+
+        notificacionEventPort.programacionCreada(
+                creada.getId(),
+                creada.getPedidoId(),
+                creada.getFechaProgramada()
+        );
+
         return creada;
     }
 

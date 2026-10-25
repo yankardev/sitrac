@@ -1,11 +1,11 @@
-# Imagen única para los 10 microservicios de SITRAC.
-# La etapa "build" compila todo el proyecto Maven una sola vez (Docker la reutiliza
-# desde caché para cada servicio) y la etapa final copia solo el JAR del servicio
-# indicado en el argumento SERVICE.
+# Imagen genérica para servicios Spring Boot de SITRAC.
+# Compila el reactor Maven completo y copia únicamente el JAR indicado por SERVICE.
 
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 COPY pom.xml .
+COPY eureka-server/pom.xml eureka-server/
+COPY api-gateway/pom.xml api-gateway/
 COPY auth-service/pom.xml auth-service/
 COPY cliente-service/pom.xml cliente-service/
 COPY pedido-service/pom.xml pedido-service/
@@ -16,6 +16,7 @@ COPY viaje-service/pom.xml viaje-service/
 COPY mantenimiento-service/pom.xml mantenimiento-service/
 COPY somma-service/pom.xml somma-service/
 COPY combustible-service/pom.xml combustible-service/
+COPY notification-service/pom.xml notification-service/
 RUN mvn -B -q dependency:go-offline -DskipTests || true
 COPY . .
 RUN mvn -B -q -DskipTests package
