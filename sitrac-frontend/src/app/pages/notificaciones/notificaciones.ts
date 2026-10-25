@@ -23,12 +23,16 @@ export class Notificaciones implements OnInit {
     this.cargar();
   }
 
-  get totalEnviadas(): number {
-    return this.registros.filter(item => item.estado === 'ENVIADA').length;
+  get totalConductor(): number {
+    return this.registros.filter(item => item.tipoEvento === 'ABASTECIMIENTO_CONFIRMADO').length;
   }
 
-  get totalSimuladas(): number {
-    return this.registros.filter(item => item.estado === 'SIMULADA').length;
+  get totalCliente(): number {
+    return this.registros.filter(item => item.tipoEvento === 'VIAJE_FINALIZADO').length;
+  }
+
+  get totalCorrectas(): number {
+    return this.registros.filter(item => item.estado === 'ENVIADA' || item.estado === 'SIMULADA').length;
   }
 
   get totalErrores(): number {
@@ -54,21 +58,37 @@ export class Notificaciones implements OnInit {
       });
   }
 
-  etiquetaEvento(tipo: string): string {
-    if (tipo === 'ABASTECIMIENTO_CONFIRMADO') {
-      return 'Abastecimiento confirmado';
+  comunicacion(registro: RegistroNotificacion): string {
+    if (registro.tipoEvento === 'ABASTECIMIENTO_CONFIRMADO') {
+      return 'Conductor · abastecimiento confirmado';
     }
-    if (tipo === 'VIAJE_FINALIZADO') {
-      return 'Viaje finalizado';
+    if (registro.tipoEvento === 'VIAJE_FINALIZADO') {
+      return 'Cliente · servicio finalizado';
     }
-    return tipo.replaceAll('_', ' ');
+    return registro.tipoEvento.replaceAll('_', ' ');
+  }
+
+  destinatarioTipo(registro: RegistroNotificacion): string {
+    if (registro.tipoEvento === 'ABASTECIMIENTO_CONFIRMADO') return 'CONDUCTOR';
+    if (registro.tipoEvento === 'VIAJE_FINALIZADO') return 'CLIENTE';
+    return 'DESTINATARIO';
+  }
+
+  resultado(registro: RegistroNotificacion): string {
+    if (registro.tipoEvento === 'ABASTECIMIENTO_CONFIRMADO') {
+      return 'Se generó la comunicación con el punto de abastecimiento y los galones autorizados.';
+    }
+    if (registro.tipoEvento === 'VIAJE_FINALIZADO') {
+      return 'Se generó la comunicación de cierre y la constancia PDF para el cliente.';
+    }
+    return registro.detalle;
   }
 
   etiquetaEstado(estado: EstadoNotificacion): string {
     switch (estado) {
-      case 'ENVIADA': return 'Enviada';
-      case 'SIMULADA': return 'Simulada';
-      case 'OMITIDA': return 'Omitida';
+      case 'ENVIADA': return 'Correo enviado';
+      case 'SIMULADA': return 'Generada · modo demo';
+      case 'OMITIDA': return 'No enviada';
       case 'ERROR': return 'Error';
     }
   }
