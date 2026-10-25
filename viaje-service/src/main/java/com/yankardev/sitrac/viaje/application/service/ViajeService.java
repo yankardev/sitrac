@@ -5,6 +5,7 @@ import com.yankardev.sitrac.viaje.application.exception.ViajeNoEncontradoExcepti
 import com.yankardev.sitrac.viaje.domain.model.EstadoViaje;
 import com.yankardev.sitrac.viaje.domain.model.Viaje;
 import com.yankardev.sitrac.viaje.domain.port.in.ViajeUseCase;
+import com.yankardev.sitrac.viaje.domain.port.out.NotificacionEventPort;
 import com.yankardev.sitrac.viaje.domain.port.out.ProgramacionConsultaPort;
 import com.yankardev.sitrac.viaje.domain.port.out.SommaConsultaPort;
 import com.yankardev.sitrac.viaje.domain.port.out.ViajeRepositoryPort;
@@ -20,6 +21,7 @@ public class ViajeService implements ViajeUseCase {
     private final ViajeRepositoryPort repo;
     private final ProgramacionConsultaPort programacionConsulta;
     private final SommaConsultaPort sommaConsulta;
+    private final NotificacionEventPort notificacionEventPort;
 
     @Override
     public Viaje crear(Viaje viaje) {
@@ -86,7 +88,7 @@ public class ViajeService implements ViajeUseCase {
             );
         }
 
-        return repo.guardar(Viaje.builder()
+        Viaje actualizado = repo.guardar(Viaje.builder()
                 .id(actual.getId())
                 .programacionId(actual.getProgramacionId())
                 .fechaInicio(viaje.getFechaInicio())
@@ -96,6 +98,16 @@ public class ViajeService implements ViajeUseCase {
                 .observacion(viaje.getObservacion())
                 .estado(nuevoEstado)
                 .build());
+
+        if (cambioEstado && nuevoEstado == EstadoViaje.FINALIZADO) {
+            notificacionEventPort.viajeFinalizado(
+                    actualizado.getId(),
+                    actualizado.getProgramacionId(),
+                    actualizado.getFechaFin()
+            );
+        }
+
+        return actualizado;
     }
 
     @Override
