@@ -11,6 +11,7 @@ public record ConductorResponse(
         String categoriaLicencia,
         LocalDate fechaVencimientoLicencia,
         String telefono,
+        String email,
         boolean disponible,
         boolean activo
 ) {
