@@ -28,6 +28,8 @@
         <module>eureka-server</module>
         <module>api-gateway</module>
         <module>auth-service</module>
+
+        <!-- Módulos internos heredados: conservan la implementación hexagonal existente. -->
         <module>cliente-service</module>
         <module>pedido-service</module>
         <module>conductor-service</module>
@@ -37,6 +39,12 @@
         <module>mantenimiento-service</module>
         <module>somma-service</module>
         <module>combustible-service</module>
+
+        <!-- Microservicios funcionales desplegables consolidados. -->
+        <module>comercial-service</module>
+        <module>operaciones-service</module>
+        <module>recursos-service</module>
+        <module>prevencion-service</module>
         <module>notification-service</module>
     </modules>
 
