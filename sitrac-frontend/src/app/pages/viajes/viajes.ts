@@ -166,7 +166,7 @@ export class Viajes implements OnInit {
     this.tipoOperacion = tipo;
     this.operacion = {
       fecha: this.fechaHoraActual(),
-      kilometraje: tipo === 'INICIAR' ? viaje.kilometrajeInicial : viaje.kilometrajeFinal,
+      kilometraje: tipo === 'INICIAR' ? viaje.kilometrajeInicial : null,
       observacion: viaje.observacion ?? ''
     };
     this.error = '';
@@ -182,6 +182,18 @@ export class Viajes implements OnInit {
     }
   }
 
+  kilometrajeMinimoOperacion(): number {
+    if (
+      this.tipoOperacion === 'FINALIZAR' &&
+      this.viajeSeleccionado?.kilometrajeInicial !== null &&
+      this.viajeSeleccionado?.kilometrajeInicial !== undefined
+    ) {
+      return this.viajeSeleccionado.kilometrajeInicial;
+    }
+
+    return 0;
+  }
+
   guardarOperacion(): void {
     const viaje = this.viajeSeleccionado;
 
@@ -191,13 +203,23 @@ export class Viajes implements OnInit {
     }
 
     const iniciar = this.tipoOperacion === 'INICIAR';
+    const kilometrajeIngresado = Number(this.operacion.kilometraje);
+
+    if (
+      !iniciar &&
+      viaje.kilometrajeInicial !== null &&
+      kilometrajeIngresado < viaje.kilometrajeInicial
+    ) {
+      this.error = `El kilometraje final debe ser igual o mayor al inicial (${viaje.kilometrajeInicial} km).`;
+      return;
+    }
 
     const payload: ViajeForm = {
       programacionId: viaje.programacionId,
       fechaInicio: iniciar ? this.operacion.fecha : viaje.fechaInicio,
       fechaFin: iniciar ? viaje.fechaFin : this.operacion.fecha,
-      kilometrajeInicial: iniciar ? Number(this.operacion.kilometraje) : viaje.kilometrajeInicial,
-      kilometrajeFinal: iniciar ? viaje.kilometrajeFinal : Number(this.operacion.kilometraje),
+      kilometrajeInicial: iniciar ? kilometrajeIngresado : viaje.kilometrajeInicial,
+      kilometrajeFinal: iniciar ? viaje.kilometrajeFinal : kilometrajeIngresado,
       observacion: this.operacion.observacion.trim(),
       estado: iniciar ? 'EN_VIAJE' : 'FINALIZADO'
     };
