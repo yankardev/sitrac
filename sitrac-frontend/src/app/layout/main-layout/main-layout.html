@@ -20,6 +20,11 @@
         <span>Dashboard</span>
       </a>
 
+      <a routerLink="/notificaciones" routerLinkActive="active" class="menu-item">
+        <span class="icon">🔔</span>
+        <span>Notificaciones</span>
+      </a>
+
       <ng-container *ngIf="puedeAcceder('ADMIN', 'OPERADOR', 'SUPERVISOR')">
         <a routerLink="/clientes" routerLinkActive="active" class="menu-item">
           <span class="icon">▣</span>
