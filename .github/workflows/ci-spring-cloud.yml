@@ -1,10 +1,11 @@
-name: SITRAC Spring Cloud CI
+name: SITRAC Final CI
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - feature/spring-cloud-rabbitmq
+      - master
+      - refactor/flujo-esencial-exposicion
   pull_request:
     branches:
       - master
